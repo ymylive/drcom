@@ -47,18 +47,17 @@ jobs:
           - arm_cortex-a9_neon
           - arm_cortex-a9_vfpv3-d16
           - arm_fa526
-          - arm_mpcore
           - arm_xscale
           - i386_pentium4
           - loongarch64_generic
           - mips64_octeonplus
-          - mips64el_generic
+          - mips64el_mips64r2
           - mips_24kc
           - mips_mips32
           - mipsel_24kc
           - mipsel_mips32
           - powerpc_464fp
-          - powerpc_e5500
+          - powerpc64_e5500
           - riscv64_riscv64
           - x86_64
 
