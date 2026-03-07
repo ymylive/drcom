@@ -1,0 +1,111 @@
+name: build-ipk
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+    paths:
+      - '.github/workflows/build-ipk.yml'
+      - 'jludrcom/**'
+      - 'README.md'
+  pull_request:
+    paths:
+      - '.github/workflows/build-ipk.yml'
+      - 'jludrcom/**'
+      - 'README.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PACKAGE_NAME: jludrcom
+  OPENWRT_RELEASE: 24.10.5
+
+jobs:
+  build:
+    name: ${{ matrix.pkgarch }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        pkgarch:
+          - aarch64_cortex-a53
+          - aarch64_cortex-a72
+          - aarch64_generic
+          - arm_arm1176jzf-s_vfp
+          - arm_cortex-a15_neon-vfpv4
+          - arm_cortex-a5_vfpv4
+          - arm_cortex-a7
+          - arm_cortex-a7_neon-vfpv4
+          - arm_cortex-a8_vfpv3
+          - arm_cortex-a9
+          - arm_cortex-a9_neon
+          - arm_cortex-a9_vfpv3-d16
+          - arm_fa526
+          - arm_mpcore
+          - arm_xscale
+          - i386_pentium4
+          - loongarch64_generic
+          - mips64_octeonplus
+          - mips64el_generic
+          - mips_24kc
+          - mips_mips32
+          - mipsel_24kc
+          - mipsel_mips32
+          - powerpc_464fp
+          - powerpc_e5500
+          - riscv64_riscv64
+          - x86_64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build package
+        uses: openwrt/gh-action-sdk@v7
+        env:
+          ARCH: ${{ matrix.pkgarch }}-${{ env.OPENWRT_RELEASE }}
+          PACKAGES: ${{ env.PACKAGE_NAME }}
+          NO_REFRESH_CHECK: true
+          V: s
+
+      - name: Collect build outputs
+        shell: bash
+        run: |
+          set -eux
+          mkdir -p dist/${{ matrix.pkgarch }}
+          find bin/packages -type f \( -name '*.ipk' -o -name 'Packages' -o -name 'Packages.gz' -o -name 'Packages.manifest' \) -exec cp --parents {} dist/${{ matrix.pkgarch }}/ \;
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.PACKAGE_NAME }}-${{ matrix.pkgarch }}-openwrt-${{ env.OPENWRT_RELEASE }}
+          path: dist/${{ matrix.pkgarch }}
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: jludrcom-*-openwrt-*
+
+      - name: Publish release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/**/*.ipk

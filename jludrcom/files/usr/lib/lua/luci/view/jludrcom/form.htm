@@ -1,0 +1,645 @@
+<%+header%>
+<script type="text/javascript" src="<%=resource%>/xhr.js"></script>
+<style type="text/css">
+	.jludrcom-page {
+		--jl-bg: #0f172a;
+		--jl-panel: #111827;
+		--jl-panel-soft: #1f2937;
+		--jl-border: #334155;
+		--jl-text: #e5eefb;
+		--jl-muted: #94a3b8;
+		--jl-ok: #22c55e;
+		--jl-warn: #f59e0b;
+		--jl-danger: #ef4444;
+		--jl-info: #38bdf8;
+		--jl-shadow: 0 12px 36px rgba(15, 23, 42, 0.28);
+		color: var(--jl-text);
+	}
+
+	.jludrcom-hero,
+	.jludrcom-card,
+	.jludrcom-editor,
+	.jludrcom-panel {
+		background: linear-gradient(180deg, rgba(17, 24, 39, 0.96), rgba(15, 23, 42, 0.96));
+		border: 1px solid var(--jl-border);
+		border-radius: 16px;
+		box-shadow: var(--jl-shadow);
+	}
+
+	.jludrcom-hero {
+		padding: 24px;
+		margin-bottom: 18px;
+	}
+
+	.jludrcom-hero h2 {
+		margin: 0 0 8px;
+		font-size: 28px;
+		line-height: 1.2;
+		color: #f8fafc;
+	}
+
+	.jludrcom-hero p,
+	.jludrcom-help,
+	.jludrcom-meta,
+	.jludrcom-empty {
+		margin: 0;
+		color: var(--jl-muted);
+		line-height: 1.6;
+	}
+
+	.jludrcom-feedback,
+	.jludrcom-message {
+		margin: 16px 0 0;
+		padding: 12px 14px;
+		border-radius: 12px;
+		border: 1px solid var(--jl-border);
+		background: rgba(15, 23, 42, 0.68);
+	}
+
+	.jludrcom-feedback.is-ok,
+	.jludrcom-message.is-ok {
+		border-color: rgba(34, 197, 94, 0.42);
+		color: #bbf7d0;
+	}
+
+	.jludrcom-feedback.is-error,
+	.jludrcom-message.is-error {
+		border-color: rgba(239, 68, 68, 0.42);
+		color: #fecaca;
+	}
+
+	.jludrcom-feedback.is-pending {
+		border-color: rgba(56, 189, 248, 0.42);
+		color: #bae6fd;
+	}
+
+	.jludrcom-grid,
+	.jludrcom-panel-grid {
+		display: grid;
+		gap: 16px;
+		margin-bottom: 18px;
+	}
+
+	.jludrcom-grid {
+		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	}
+
+	.jludrcom-panel-grid {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+	}
+
+	.jludrcom-card,
+	.jludrcom-editor,
+	.jludrcom-panel {
+		padding: 18px;
+	}
+
+	.jludrcom-card h3,
+	.jludrcom-editor h3,
+	.jludrcom-panel h3 {
+		margin: 0 0 12px;
+		font-size: 16px;
+		font-weight: 600;
+		color: #f8fafc;
+	}
+
+	.jludrcom-kpi {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		margin-bottom: 12px;
+	}
+
+	.jludrcom-badge {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-height: 32px;
+		padding: 0 12px;
+		border-radius: 999px;
+		font-size: 12px;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		text-transform: uppercase;
+		border: 1px solid transparent;
+	}
+
+	.jludrcom-badge.is-running {
+		background: rgba(34, 197, 94, 0.14);
+		border-color: rgba(34, 197, 94, 0.34);
+		color: #86efac;
+	}
+
+	.jludrcom-badge.is-stopped,
+	.jludrcom-badge.is-critical {
+		background: rgba(239, 68, 68, 0.14);
+		border-color: rgba(239, 68, 68, 0.34);
+		color: #fca5a5;
+	}
+
+	.jludrcom-badge.is-warning {
+		background: rgba(245, 158, 11, 0.14);
+		border-color: rgba(245, 158, 11, 0.34);
+		color: #fcd34d;
+	}
+
+	.jludrcom-badge.is-info {
+		background: rgba(56, 189, 248, 0.14);
+		border-color: rgba(56, 189, 248, 0.34);
+		color: #bae6fd;
+	}
+
+	.jludrcom-list,
+	.jludrcom-error-list {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+	}
+
+	.jludrcom-list li,
+	.jludrcom-error-list li {
+		padding: 10px 0;
+		border-top: 1px solid rgba(51, 65, 85, 0.65);
+	}
+
+	.jludrcom-list li:first-child,
+	.jludrcom-error-list li:first-child {
+		border-top: 0;
+		padding-top: 0;
+	}
+
+	.jludrcom-key {
+		display: block;
+		margin-bottom: 4px;
+		color: var(--jl-muted);
+		font-size: 12px;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+	}
+
+	.jludrcom-value {
+		display: block;
+		word-break: break-word;
+	}
+
+	.jludrcom-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 12px;
+		margin-bottom: 18px;
+	}
+
+	.jludrcom-button,
+	.jludrcom-toggle,
+	.jludrcom-refresh {
+		min-height: 44px;
+		padding: 0 16px;
+		border-radius: 12px;
+		border: 1px solid var(--jl-border);
+		background: rgba(30, 41, 59, 0.92);
+		color: #f8fafc;
+		cursor: pointer;
+		transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+	}
+
+	.jludrcom-button:hover,
+	.jludrcom-button:focus,
+	.jludrcom-toggle:hover,
+	.jludrcom-toggle:focus,
+	.jludrcom-refresh:hover,
+	.jludrcom-refresh:focus {
+		border-color: rgba(56, 189, 248, 0.6);
+		background: rgba(30, 41, 59, 1);
+		transform: translateY(-1px);
+	}
+
+	.jludrcom-button[disabled],
+	.jludrcom-toggle[disabled],
+	.jludrcom-refresh[disabled] {
+		opacity: 0.68;
+		cursor: wait;
+		transform: none;
+	}
+
+	.jludrcom-button.cbi-button-apply {
+		background: linear-gradient(180deg, rgba(34, 197, 94, 0.26), rgba(22, 163, 74, 0.22));
+		border-color: rgba(34, 197, 94, 0.42);
+	}
+
+	.jludrcom-button.is-danger {
+		background: linear-gradient(180deg, rgba(239, 68, 68, 0.20), rgba(185, 28, 28, 0.16));
+		border-color: rgba(239, 68, 68, 0.42);
+	}
+
+	.jludrcom-panel-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		margin-bottom: 12px;
+	}
+
+	.jludrcom-panel-tools {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		flex-wrap: wrap;
+	}
+
+	#conf {
+		width: 100%;
+		min-height: 320px;
+		padding: 14px;
+		box-sizing: border-box;
+		border-radius: 14px;
+		border: 1px solid var(--jl-border);
+		background: #020617;
+		color: #e2e8f0;
+		font: 14px/1.6 "Fira Code", Consolas, Monaco, monospace;
+	}
+
+	#conf:focus,
+	.jludrcom-toggle:focus,
+	.jludrcom-refresh:focus,
+	.jludrcom-button:focus {
+		outline: 2px solid rgba(56, 189, 248, 0.55);
+		outline-offset: 2px;
+	}
+
+	.jludrcom-editor-meta {
+		margin-top: 10px;
+		font-size: 13px;
+	}
+
+	#jludrcom-log-output {
+		margin: 0;
+		padding: 14px;
+		min-height: 360px;
+		max-height: 520px;
+		overflow: auto;
+		border-radius: 14px;
+		border: 1px solid var(--jl-border);
+		background: #020617;
+		color: #cbd5e1;
+		white-space: pre-wrap;
+		word-break: break-word;
+		font: 13px/1.55 "Fira Code", Consolas, Monaco, monospace;
+	}
+
+	.jludrcom-error-title {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-bottom: 6px;
+		color: #f8fafc;
+		font-weight: 600;
+	}
+
+	.jludrcom-error-line,
+	.jludrcom-error-hint {
+		display: block;
+		color: var(--jl-muted);
+		line-height: 1.55;
+		word-break: break-word;
+	}
+
+	@media (max-width: 960px) {
+		.jludrcom-panel-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.jludrcom-button,
+		.jludrcom-toggle,
+		.jludrcom-refresh {
+			transition: none;
+		}
+	}
+</style>
+
+<div class="jludrcom-page">
+	<div class="jludrcom-hero">
+		<h2><%:DrCOM for JLU%></h2>
+		<p><%:Expanded operations dashboard with current status, error diagnosis, and live logs for faster troubleshooting.%></p>
+		<p class="jludrcom-help"><%:Config parser compatibility tip:%> <code>mac = 0xB025AA851014</code>, <code>keepalive1_mod = True</code>, <%:and avoid unsupported free-form syntax when debugging crashes.%></p>
+		<% if message then %>
+			<div class="jludrcom-message <% if message_type == "error" then %>is-error<% else %>is-ok<% end %>"><%=message%></div>
+		<% end %>
+		<div id="jludrcom-feedback" class="jludrcom-feedback is-pending"><%:Loading status, logs, and diagnostics...%></div>
+	</div>
+
+	<div class="jludrcom-grid">
+		<div class="jludrcom-card">
+			<div class="jludrcom-kpi">
+				<h3><%:Current Status%></h3>
+				<span id="jludrcom-service-state" class="jludrcom-badge is-warning"><%:Checking%></span>
+			</div>
+			<ul class="jludrcom-list">
+				<li><span class="jludrcom-key"><%:Process ID%></span><span id="jludrcom-service-pid" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key"><%:Autostart%></span><span id="jludrcom-service-enabled" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key"><%:Log Source%></span><span id="jludrcom-log-source" class="jludrcom-value"><%=log_path%></span></li>
+				<li><span class="jludrcom-key"><%:Last Refresh%></span><span id="jludrcom-updated-at" class="jludrcom-value">-</span></li>
+			</ul>
+		</div>
+
+		<div class="jludrcom-card">
+			<div class="jludrcom-kpi">
+				<h3><%:Config Health%></h3>
+				<span id="jludrcom-config-state" class="jludrcom-badge is-warning"><%:Checking%></span>
+			</div>
+			<ul class="jludrcom-list">
+				<li><span class="jludrcom-key"><%:Missing Keys%></span><span id="jludrcom-config-missing" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key"><%:Warnings%></span><span id="jludrcom-config-warnings" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key"><%:Parsed Keys%></span><span id="jludrcom-config-count" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key"><%:Config Path%></span><span class="jludrcom-value"><%=conf_path%></span></li>
+			</ul>
+		</div>
+
+		<div class="jludrcom-card">
+			<div class="jludrcom-kpi">
+				<h3><%:Last Error%></h3>
+				<span id="jludrcom-error-state" class="jludrcom-badge is-info"><%:Waiting%></span>
+			</div>
+			<ul class="jludrcom-list">
+				<li><span class="jludrcom-key"><%:Summary%></span><span id="jludrcom-error-title" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key"><%:Evidence%></span><span id="jludrcom-error-line" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key"><%:Suggested Fix%></span><span id="jludrcom-error-hint" class="jludrcom-value">-</span></li>
+			</ul>
+		</div>
+
+		<div class="jludrcom-card">
+			<div class="jludrcom-kpi">
+				<h3><%:Network Status%></h3>
+				<span id="jludrcom-network-state" class="jludrcom-badge is-info"><%:Loading%></span>
+			</div>
+			<ul class="jludrcom-list">
+				<li><span class="jludrcom-key"><%:Bind Port%></span><span id="jludrcom-network-bind" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key"><%:Upstream Path%></span><span id="jludrcom-network-route" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key"><%:Configured host_ip / Active src%></span><span id="jludrcom-network-host-ip" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key"><%:Challenge State%></span><span id="jludrcom-network-challenge" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key"><%:Port Owners / PIDs%></span><span id="jludrcom-network-port-owners" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key"><%:Auto Recovery%></span><span id="jludrcom-network-recovery" class="jludrcom-value">-</span></li>
+			</ul>
+		</div>
+	</div>
+
+	<div class="jludrcom-actions">
+		<button type="button" class="jludrcom-button" data-service-action="start"><%:Start Service%></button>
+		<button type="button" class="jludrcom-button cbi-button-apply" data-service-action="restart"><%:Restart Service%></button>
+		<button type="button" class="jludrcom-button is-danger" data-service-action="stop"><%:Stop Service%></button>
+		<button type="button" id="jludrcom-refresh-all" class="jludrcom-refresh"><%:Refresh Now%></button>
+		<button type="button" id="jludrcom-toggle-refresh" class="jludrcom-toggle"><%:Pause Auto Refresh%></button>
+	</div>
+
+	<div class="jludrcom-editor">
+		<h3><%:Config Editor%></h3>
+		<p class="jludrcom-help"><%:Use the official dogcom-style syntax. The runtime checker below highlights missing keys and common format mistakes before you restart the service.%></p>
+		<form method="post" action="">
+			<input type="hidden" name="token" value="<%=token%>" />
+			<textarea id="conf" name="conf" rows="20"><%=conf%></textarea>
+			<div class="cbi-page-actions" style="margin-top: 14px;">
+				<button type="submit" class="jludrcom-button cbi-button-apply"><%:Save & Restart%></button>
+			</div>
+		</form>
+		<p class="jludrcom-editor-meta"><%:Recommended debug flow:%> <%:stop service -> run in foreground -> observe live logs -> fix config -> restart service.%></p>
+	</div>
+
+	<div class="jludrcom-panel-grid">
+		<div class="jludrcom-panel">
+			<div class="jludrcom-panel-head">
+				<h3><%:Diagnostics%></h3>
+				<div class="jludrcom-panel-tools"><span class="jludrcom-meta"><%:Auto-generated from current status and recent log patterns.%></span></div>
+			</div>
+			<ul id="jludrcom-error-list" class="jludrcom-error-list"><li class="jludrcom-empty"><%:Waiting for diagnostics...%></li></ul>
+		</div>
+
+		<div class="jludrcom-panel">
+			<div class="jludrcom-panel-head">
+				<h3><%:Live Logs%></h3>
+				<div class="jludrcom-panel-tools"><span class="jludrcom-meta" id="jludrcom-log-source-text"><%=log_path%></span></div>
+			</div>
+			<pre id="jludrcom-log-output"><%:Loading logs...%></pre>
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript">
+(function() {
+	var statusUrl = '<%=status_url%>';
+	var logsUrl = '<%=logs_url%>';
+	var serviceUrl = '<%=service_url%>';
+	var token = '<%=token%>';
+	var autoRefresh = true;
+
+	function byId(id) { return document.getElementById(id); }
+	function setText(id, value) { var node = byId(id); if (node) { node.textContent = value || '-'; } }
+	function setFeedback(message, state) { var node = byId('jludrcom-feedback'); if (node) { node.className = 'jludrcom-feedback ' + (state || 'is-info'); node.textContent = message; } }
+	function setBadge(node, text, stateClass) { if (node) { node.className = 'jludrcom-badge ' + stateClass; node.textContent = text; } }
+	function joinList(items, emptyText) { return (items && items.length) ? items.join(', ') : (emptyText || '-'); }
+	function setControlsDisabled(disabled) {
+		var controls = document.querySelectorAll('[data-service-action], #jludrcom-refresh-all, #jludrcom-toggle-refresh');
+		var index;
+		for (index = 0; index < controls.length; index++) {
+			controls[index].disabled = !!disabled;
+		}
+	}
+	function encodeForm(data) { var parts = []; var key; for (key in data) { if (data.hasOwnProperty(key)) { parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(data[key])); } } return parts.join('&'); }
+
+	function request(method, url, data, callback) {
+		var xhr = new XMLHttpRequest();
+		xhr.onreadystatechange = function() {
+			var payload = null;
+			if (xhr.readyState !== 4) { return; }
+			if (xhr.responseText) {
+				try { payload = JSON.parse(xhr.responseText); } catch (error) { payload = null; }
+			}
+			callback(xhr.status >= 200 && xhr.status < 300, payload, xhr);
+		};
+		if (method === 'POST') {
+			xhr.open('POST', url, true);
+			xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+			xhr.send(encodeForm(data || {}));
+		} else {
+			xhr.open('GET', url + '?_=' + new Date().getTime(), true);
+			xhr.send(null);
+		}
+	}
+
+	function renderConfig(config) {
+		var missing = (config && config.missing_keys && config.missing_keys.length) ? config.missing_keys.join(', ') : 'None';
+		var warnings = (config && config.warnings && config.warnings.length) ? config.warnings.join(' | ') : 'None';
+		var valid = config && config.valid;
+		setBadge(byId('jludrcom-config-state'), valid ? 'Valid' : 'Needs Attention', valid ? 'is-running' : 'is-warning');
+		setText('jludrcom-config-missing', missing);
+		setText('jludrcom-config-warnings', warnings);
+		setText('jludrcom-config-count', config ? String(config.parsed_keys || 0) + ' / ' + String(config.non_empty_lines || 0) : '-');
+	}
+
+	function renderErrors(errors, lastError) {
+		var list = byId('jludrcom-error-list');
+		var badge = byId('jludrcom-error-state');
+		var topError = lastError || (errors && errors.length ? errors[0] : null);
+		var index;
+		if (!list) { return; }
+		while (list.firstChild) { list.removeChild(list.firstChild); }
+		if (!errors || !errors.length) {
+			var empty = document.createElement('li');
+			empty.className = 'jludrcom-empty';
+			empty.textContent = 'No obvious error signatures found in the latest status snapshot.';
+			list.appendChild(empty);
+			setBadge(badge, 'Clear', 'is-running');
+			setText('jludrcom-error-title', 'No recent error detected');
+			setText('jludrcom-error-line', '-');
+			setText('jludrcom-error-hint', 'Continue monitoring logs while testing authentication.');
+			return;
+		}
+		for (index = 0; index < errors.length; index++) {
+			var item = document.createElement('li');
+			var title = document.createElement('div');
+			title.className = 'jludrcom-error-title';
+			title.textContent = errors[index].title || 'Issue';
+			item.appendChild(title);
+			if (errors[index].line) {
+				var line = document.createElement('span');
+				line.className = 'jludrcom-error-line';
+				line.textContent = errors[index].line;
+				item.appendChild(line);
+			}
+			if (errors[index].hint) {
+				var hint = document.createElement('span');
+				hint.className = 'jludrcom-error-hint';
+				hint.textContent = errors[index].hint;
+				item.appendChild(hint);
+			}
+			list.appendChild(item);
+		}
+		setBadge(badge, topError && topError.severity === 'critical' ? 'Critical' : (topError && topError.severity === 'warning' ? 'Warning' : 'Info'), topError && topError.severity === 'critical' ? 'is-critical' : (topError && topError.severity === 'warning' ? 'is-warning' : 'is-info'));
+		setText('jludrcom-error-title', topError.title || '-');
+		setText('jludrcom-error-line', topError.line || '-');
+		setText('jludrcom-error-hint', topError.hint || '-');
+	}
+
+	function renderNetwork(network) {
+		var stateText = 'Unknown';
+		var stateClass = 'is-info';
+		var bindLabel = '-';
+		var routeLabel = '-';
+		var hostLabel = '-';
+		var challengeLabel = '-';
+		var ownersLabel = '-';
+		var recoveryLabel = '-';
+		if (!network) {
+			setBadge(byId('jludrcom-network-state'), 'Unavailable', 'is-warning');
+			setText('jludrcom-network-bind', bindLabel);
+			setText('jludrcom-network-route', routeLabel);
+			setText('jludrcom-network-host-ip', hostLabel);
+			setText('jludrcom-network-challenge', challengeLabel);
+			setText('jludrcom-network-port-owners', ownersLabel);
+			setText('jludrcom-network-recovery', recoveryLabel);
+			return;
+		}
+
+		if (network.port_mode === 'blocked') {
+			stateText = 'Port Blocked';
+			stateClass = 'is-critical';
+		} else if (network.challenge_code === 'authenticated' || network.challenge_code === 'received') {
+			stateText = 'Ready';
+			stateClass = 'is-running';
+		} else if (network.port_mode === 'listening') {
+			stateText = 'Listening';
+			stateClass = 'is-info';
+		} else if (network.port_mode === 'free') {
+			stateText = 'Idle';
+			stateClass = 'is-warning';
+		}
+
+		bindLabel = String(network.bind_port || '61440') + ' / ' + (network.port_mode || 'unknown');
+		routeLabel = network.route_line || ((network.interface || network.route_source_ip) ? [network.interface || 'unknown-iface', network.route_source_ip || 'no-src'].join(' · ') : 'No route detected');
+		hostLabel = (network.configured_host_ip || 'unset') + ' / ' + (network.route_source_ip || 'no-src');
+		challengeLabel = network.challenge_status || 'Idle';
+		if (network.challenge_line) { challengeLabel += ' · ' + network.challenge_line; }
+		ownersLabel = joinList(network.port_owners, network.port_line || 'No listener');
+		if (network.port_pids && network.port_pids.length) { ownersLabel += ' · pid ' + network.port_pids.join(', '); }
+		recoveryLabel = network.recovery_message || (network.auto_port_recovery ? 'Automatic recovery armed before service start.' : 'Disabled');
+		if (network.recovery_time) { recoveryLabel += ' · ' + network.recovery_time; }
+
+		setBadge(byId('jludrcom-network-state'), stateText, stateClass);
+		setText('jludrcom-network-bind', bindLabel);
+		setText('jludrcom-network-route', routeLabel);
+		setText('jludrcom-network-host-ip', hostLabel);
+		setText('jludrcom-network-challenge', challengeLabel);
+		setText('jludrcom-network-port-owners', ownersLabel);
+		setText('jludrcom-network-recovery', recoveryLabel);
+	}
+
+	function renderStatus(data) {
+		setBadge(byId('jludrcom-service-state'), data.running ? 'Running' : 'Stopped', data.running ? 'is-running' : 'is-stopped');
+		setText('jludrcom-service-pid', data.pid || 'N/A');
+		setText('jludrcom-updated-at', data.updated_at || '-');
+		setText('jludrcom-log-source', data.log_source || '-');
+		setText('jludrcom-log-source-text', data.log_source || '-');
+		setBadge(byId('jludrcom-service-enabled'), data.enabled ? 'Enabled' : 'Disabled', data.enabled ? 'is-running' : 'is-warning');
+		renderNetwork(data.network || null);
+		renderConfig(data.config || {});
+		renderErrors(data.errors || [], data.last_error || null);
+	}
+
+	function renderLogs(data) {
+		setText('jludrcom-log-source-text', data.log_source || '-');
+		byId('jludrcom-log-output').textContent = data.logs || 'No logs available yet.';
+		if (data.errors) { renderErrors(data.errors, data.last_error || null); }
+	}
+
+	function refreshStatus(silent) {
+		request('GET', statusUrl, null, function(ok, data) {
+			if (ok && data) { renderStatus(data); if (!silent) { setFeedback('Status refreshed successfully.', 'is-ok'); } }
+			else { renderNetwork(null); if (!silent) { setFeedback('Failed to refresh current status.', 'is-error'); } }
+		});
+	}
+
+	function refreshLogs(silent) {
+		request('GET', logsUrl, null, function(ok, data) {
+			if (ok && data) { renderLogs(data); if (!silent) { setFeedback('Logs refreshed successfully.', 'is-ok'); } }
+			else if (!silent) { setFeedback('Failed to refresh logs.', 'is-error'); }
+		});
+	}
+
+	function refreshAll(silent) { refreshStatus(silent); refreshLogs(true); }
+
+	function triggerService(action) {
+		setFeedback('Submitting service action: ' + action + '...', 'is-pending');
+		setControlsDisabled(true);
+		request('POST', serviceUrl, { token: token, action: action }, function(ok, data) {
+			if (ok && data && data.ok) {
+				if (data.status) { renderStatus(data.status); }
+				setFeedback(data.message || 'Service action completed.', 'is-ok');
+				window.setTimeout(function() { refreshAll(true); }, 1200);
+			} else {
+				setFeedback((data && data.error) ? data.error : 'Service action failed.', 'is-error');
+			}
+			setControlsDisabled(false);
+		});
+	}
+
+	function bindActions() {
+		var buttons = document.querySelectorAll('[data-service-action]');
+		var i;
+		for (i = 0; i < buttons.length; i++) {
+			buttons[i].onclick = function() { triggerService(this.getAttribute('data-service-action')); };
+		}
+		byId('jludrcom-refresh-all').onclick = function() { refreshAll(false); };
+		byId('jludrcom-toggle-refresh').onclick = function() {
+			autoRefresh = !autoRefresh;
+			this.textContent = autoRefresh ? 'Pause Auto Refresh' : 'Resume Auto Refresh';
+			setFeedback(autoRefresh ? 'Auto refresh enabled.' : 'Auto refresh paused.', autoRefresh ? 'is-ok' : 'is-pending');
+		};
+	}
+
+	bindActions();
+	refreshAll(false);
+	window.setInterval(function() { if (autoRefresh) { refreshAll(true); } }, 5000);
+})();
+</script>
+<%+footer%>

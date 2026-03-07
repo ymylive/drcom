@@ -1,0 +1,127 @@
+#!/bin/sh /etc/rc.common
+USE_PROCD=1
+START=90
+STOP=10
+
+CONF_PATH="/etc/drcom.conf"
+LOG_PATH="/tmp/jludrcom.log"
+PORT_STATE_PATH="/tmp/jludrcom-port-state"
+SERVICE_BIN="/usr/bin/jludrcom"
+BIND_PORT="61440"
+
+timestamp() {
+	date '+%Y-%m-%d %H:%M:%S'
+}
+
+log_runtime() {
+	echo "$(timestamp) [jludrcom-init] $*" >> "$LOG_PATH"
+}
+
+to_csv() {
+	awk 'NF { if (out != "") out = out ","; out = out $0 } END { print out }'
+}
+
+write_port_state() {
+	local status="$1"
+	local message="$2"
+	local pids="$3"
+	local owners="$4"
+	{
+		echo "status=$status"
+		echo "timestamp=$(timestamp)"
+		echo "message=$message"
+		echo "pids=$pids"
+		echo "owners=$owners"
+		echo "port=$BIND_PORT"
+	} > "$PORT_STATE_PATH"
+	chmod 600 "$PORT_STATE_PATH" 2>/dev/null
+}
+
+get_port_lines() {
+	if command -v ss >/dev/null 2>&1; then
+		ss -lunp 2>/dev/null | awk -v port="$BIND_PORT" 'NR > 1 && index($0, ":" port) { print }'
+	elif command -v netstat >/dev/null 2>&1; then
+		netstat -lunp 2>/dev/null | awk -v port="$BIND_PORT" 'NR > 2 && index($0, ":" port) { print }'
+	fi
+}
+
+collect_port_pids() {
+	sed -n 's/.*pid=\([0-9][0-9]*\).*/\1/p; s/.* \([0-9][0-9]*\)\/[^[:space:]]*.*/\1/p' | sort -u
+}
+
+collect_port_owners() {
+	sed -n 's/.*users:(("\([^"]*\)".*/\1/p; s/.* [0-9][0-9]*\/\([^[:space:]]*\).*/\1/p' | sort -u
+}
+
+kill_port_pids() {
+	local signal="$1"
+	shift
+	local pid
+	for pid in "$@"; do
+		[ -n "$pid" ] || continue
+		kill -"$signal" "$pid" 2>/dev/null
+	done
+}
+
+ensure_bind_port_available() {
+	local lines pids owners remaining remaining_pids pid_list
+
+	lines="$(get_port_lines)"
+	if [ -z "$lines" ]; then
+		write_port_state "free" "Port 61440 was free before start." "" ""
+		log_runtime "port 61440 already free"
+		return 0
+	fi
+
+	pids="$(printf '%s\n' "$lines" | collect_port_pids | to_csv)"
+	owners="$(printf '%s\n' "$lines" | collect_port_owners | to_csv)"
+
+	if [ -z "$pids" ]; then
+		write_port_state "busy" "Port 61440 is occupied but the owning PID could not be identified." "" "$owners"
+		log_runtime "port 61440 busy without pid info; owners=$owners"
+		return 1
+	fi
+
+	pid_list="$(printf '%s' "$pids" | tr ',' ' ')"
+	kill_port_pids TERM $pid_list
+	sleep 1
+
+	remaining="$(get_port_lines)"
+	if [ -n "$remaining" ]; then
+		remaining_pids="$(printf '%s\n' "$remaining" | collect_port_pids)"
+		if [ -n "$remaining_pids" ]; then
+			kill_port_pids KILL $remaining_pids
+			sleep 1
+		fi
+		remaining="$(get_port_lines)"
+	fi
+
+	if [ -z "$remaining" ]; then
+		write_port_state "recovered" "Port 61440 was busy and got cleared automatically." "$pids" "$owners"
+		log_runtime "port 61440 recovered automatically; pids=$pids owners=$owners"
+		return 0
+	fi
+
+	write_port_state "failed" "Port 61440 is still occupied after automatic recovery." "$pids" "$owners"
+	log_runtime "port 61440 recovery failed; pids=$pids owners=$owners"
+	return 1
+}
+
+start_service() {
+	touch "$LOG_PATH"
+	chmod 600 "$LOG_PATH"
+
+	ensure_bind_port_available || return 1
+
+	procd_open_instance
+	procd_set_param command "$SERVICE_BIN" -m dhcp -c "$CONF_PATH" -e -l "$LOG_PATH"
+	procd_set_param respawn
+	procd_set_param file "$CONF_PATH"
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+}
+
+stop_service() {
+	rm -f "$PORT_STATE_PATH"
+}
