@@ -145,28 +145,121 @@ jobs:
 
           bundle_path="dist/${PACKAGE_NAME}-openwrt-${OPENWRT_RELEASE}-all-arches.tar.gz"
           tar -czf "$bundle_path" "${ipk_files[@]}"
-          sha256sum "$bundle_path" > dist/SHA256SUMS
+          bundle_name="$(basename "$bundle_path")"
+          bundle_sha256="$(sha256sum "$bundle_path" | awk '{print $1}')"
 
-          ensure_release_with_retry() {
+          api_get() {
+            local url="$1"
+            curl \
+              --silent \
+              --show-error \
+              --fail \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "$url"
+          }
+
+          api_json() {
+            local method="$1"
+            local url="$2"
+            local data="$3"
+            curl \
+              --silent \
+              --show-error \
+              --fail-with-body \
+              -X "$method" \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'Accept: application/vnd.github+json' \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              -H 'Content-Type: application/json' \
+              --data "$data" \
+              "$url"
+          }
+
+          upload_asset_once() {
+            local file="$1"
+            local upload_url="$2"
+            curl \
+              --silent \
+              --show-error \
+              --fail-with-body \
+              -X POST \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'Content-Type: application/gzip' \
+              --data-binary @"$file" \
+              "${upload_url}?name=${bundle_name}"
+          }
+
+          release_api_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases"
+          release_tag_url="${release_api_url}/tags/${GITHUB_REF_NAME}"
+
+          release_body="$(cat <<EOF
+          Automated OpenWrt package bundle for ${GITHUB_REF_NAME}
+
+          - Tag: ${GITHUB_REF_NAME}
+          - Commit: ${GITHUB_SHA}
+          - Bundle: ${bundle_name}
+          - SHA256: ${bundle_sha256}
+
+          The attached archive contains every generated .ipk for the supported OpenWrt targets in this workflow run.
+          EOF
+          )"
+
+          create_payload="$(RELEASE_TAG="${GITHUB_REF_NAME}" RELEASE_NAME="${GITHUB_REF_NAME}" RELEASE_BODY="${release_body}" python - <<'PY'
+          import json
+          import os
+
+          print(json.dumps({
+              'tag_name': os.environ['RELEASE_TAG'],
+              'name': os.environ['RELEASE_NAME'],
+              'body': os.environ['RELEASE_BODY'],
+              'draft': False,
+              'prerelease': False,
+          }))
+          PY
+          )"
+
+          release_has_asset() {
+            local release_json="$1"
+            RELEASE_JSON="$release_json" ASSET_NAME="$bundle_name" python - <<'PY'
+          import json
+          import os
+          import sys
+
+          release = json.loads(os.environ['RELEASE_JSON'])
+          target = os.environ['ASSET_NAME']
+          sys.exit(0 if any(asset.get('name') == target for asset in release.get('assets', [])) else 1)
+          PY
+          }
+
+          ensure_release_json() {
             local attempt=1
             local delay=15
+            local release_json=''
             local output=''
 
             while true; do
-              output="$(gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --generate-notes 2>&1)" && return 0
+              if release_json="$(api_get "$release_tag_url" 2>/dev/null)"; then
+                printf '%s' "$release_json"
+                return 0
+              fi
 
-              if printf '%s' "$output" | grep -qi 'already exists'; then
+              output="$(api_json POST "$release_api_url" "$create_payload" 2>&1)" || true
+
+              if release_json="$(api_get "$release_tag_url" 2>/dev/null)"; then
+                printf '%s' "$release_json"
                 return 0
               fi
 
               if [ "$attempt" -ge 5 ]; then
-                printf '%s\n' "$output" >&2
-                echo "Failed to create release after $attempt attempts." >&2
+                [ -n "$output" ] && printf '%s\n' "$output" >&2
+                echo "Failed to create or fetch release after $attempt attempts." >&2
                 return 1
               fi
 
-              printf '%s\n' "$output" >&2
-              echo "Release creation retry $attempt after ${delay}s." >&2
+              [ -n "$output" ] && printf '%s\n' "$output" >&2
+              echo "Release create/fetch retry $attempt after ${delay}s." >&2
               sleep "$delay"
               attempt=$((attempt + 1))
               delay=$((delay * 2))
@@ -174,34 +267,50 @@ jobs:
           }
 
           upload_with_retry() {
-            local file="$1"
+            local upload_url="$1"
             local attempt=1
             local delay=15
+            local release_json="$2"
             local output=''
 
             while true; do
-              output="$(gh release upload "${GITHUB_REF_NAME}" "$file" --clobber 2>&1)" && return 0
+              output="$(upload_asset_once "$bundle_path" "$upload_url" 2>&1)" && return 0
+
+              if release_json="$(api_get "$release_tag_url" 2>/dev/null)" && release_has_asset "$release_json"; then
+                echo "Bundle asset already exists after a failed upload response; continuing." >&2
+                return 0
+              fi
 
               if [ "$attempt" -ge 5 ]; then
-                printf '%s\n' "$output" >&2
-                echo "Failed to upload $file after $attempt attempts." >&2
+                [ -n "$output" ] && printf '%s\n' "$output" >&2
+                echo "Failed to upload $bundle_name after $attempt attempts." >&2
                 return 1
               fi
 
-              printf '%s\n' "$output" >&2
-              echo "Upload retry $attempt for $file after ${delay}s." >&2
+              [ -n "$output" ] && printf '%s\n' "$output" >&2
+              echo "Upload retry $attempt for $bundle_name after ${delay}s." >&2
               sleep "$delay"
               attempt=$((attempt + 1))
               delay=$((delay * 2))
             done
           }
 
-          ensure_release_with_retry
+          release_json="$(ensure_release_json)"
+          if release_has_asset "$release_json"; then
+            echo "Bundle asset already present on release ${GITHUB_REF_NAME}; skipping upload." >&2
+            exit 0
+          fi
 
-          echo 'Cooling down before release asset uploads to avoid secondary rate limits.' >&2
-          sleep 300
+          upload_url="$(RELEASE_JSON="$release_json" python - <<'PY'
+          import json
+          import os
 
-          for file in "$bundle_path" dist/SHA256SUMS; do
-            upload_with_retry "$file"
-            sleep 15
-          done
+          release = json.loads(os.environ['RELEASE_JSON'])
+          print(release['upload_url'].split('{', 1)[0])
+          PY
+          )"
+
+          upload_with_retry "$upload_url" "$release_json"
+
+          final_release_json="$(api_get "$release_tag_url")"
+          release_has_asset "$final_release_json"
