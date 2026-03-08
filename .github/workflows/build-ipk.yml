@@ -25,8 +25,36 @@ env:
   OPENWRT_RELEASE: 24.10.5
 
 jobs:
+  verify:
+    name: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Validate LuCI controller syntax
+        run: npx --yes luaparse jludrcom/files/usr/lib/lua/luci/controller/jludrcom.lua > /dev/null
+
+      - name: Validate LuCI inline script syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          html = Path('jludrcom/files/usr/lib/lua/luci/view/jludrcom/form.htm').read_text(encoding='utf-8')
+          marker = '<script type="text/javascript">'
+          start = html.index(marker) + len(marker)
+          end = html.index('</script>', start)
+          Path('.tmp-luci-form.js').write_text(html[start:end], encoding='utf-8', newline='\n')
+          PY
+          node --check .tmp-luci-form.js
+
+      - name: Run parser smoke test
+        run: make -C jludrcom/src test-parser
+
   build:
     name: ${{ matrix.pkgarch }}
+    needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -63,10 +91,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Build package
-        uses: openwrt/gh-action-sdk@v7
+        uses: openwrt/gh-action-sdk@0c00b28c11bed5c7697e807d4cb8ef176ca688ef
         env:
           ARCH: ${{ matrix.pkgarch }}-${{ env.OPENWRT_RELEASE }}
           PACKAGES: ${{ env.PACKAGE_NAME }}
@@ -81,7 +109,7 @@ jobs:
           find bin/packages -type f \( -name '*.ipk' -o -name 'Packages' -o -name 'Packages.gz' -o -name 'Packages.manifest' \) -exec cp --parents {} dist/${{ matrix.pkgarch }}/ \;
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ${{ env.PACKAGE_NAME }}-${{ matrix.pkgarch }}-openwrt-${{ env.OPENWRT_RELEASE }}
           path: dist/${{ matrix.pkgarch }}
@@ -97,13 +125,13 @@ jobs:
 
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           path: dist
           pattern: jludrcom-*-openwrt-*
 
       - name: Publish release assets
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
         with:
           generate_release_notes: true
           files: |

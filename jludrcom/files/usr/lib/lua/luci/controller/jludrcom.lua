@@ -6,6 +6,8 @@ local LOG_PATH = "/tmp/jludrcom.log"
 local SERVICE_NAME = "jludrcom"
 local BIND_PORT = "61440"
 local PORT_STATE_PATH = "/tmp/jludrcom-port-state"
+local SNAPSHOT_CACHE_TTL = 3
+local snapshot_cache = { full = nil, created_at = 0 }
 local i18n = require "luci.i18n"
 
 local json = nil
@@ -39,9 +41,14 @@ end
 
 local function split_lines(text)
 	local lines = {}
-	for line in (text or ""):gmatch("([^
-]*)
-?") do
+	local normalized = tostring(text or ""):gsub("\r\n?", "\n")
+	if normalized == "" then
+		return lines
+	end
+	if normalized:sub(-1) ~= "\n" then
+		normalized = normalized .. "\n"
+	end
+	for line in normalized:gmatch("(.-)\n") do
 		if not (line == "" and #lines > 0 and lines[#lines] == "") then
 			table.insert(lines, line)
 		end
@@ -81,15 +88,19 @@ local function parse_config(text)
 		raw_lines = 0,
 		non_empty_lines = 0
 	}
+	local normalized = tostring(text or ""):gsub("\r\n?", "\n")
 
-	for line in (text or ""):gmatch("([^
-]*)
-?") do
-		if line ~= nil then
-			conf.raw_lines = conf.raw_lines + 1
-		end
+	if normalized == "" then
+		return conf
+	end
+	if normalized:sub(-1) ~= "\n" then
+		normalized = normalized .. "\n"
+	end
 
-		if line and line:match("%S") and not line:match("^%s*#") then
+	for line in normalized:gmatch("(.-)\n") do
+		conf.raw_lines = conf.raw_lines + 1
+
+		if line:match("%S") and not line:match("^%s*#") then
 			conf.non_empty_lines = conf.non_empty_lines + 1
 			local key, value = line:match("^%s*([%w_]+)%s*=%s*(.-)%s*$")
 			if key then
@@ -99,14 +110,6 @@ local function parse_config(text)
 	end
 
 	return conf
-end
-
-local function count_keys(items)
-	local count = 0
-	for _ in pairs(items or {}) do
-		count = count + 1
-	end
-	return count
 end
 
 local function validate_config(conf)
@@ -437,8 +440,43 @@ local function find_last_log_line(text)
 	return ""
 end
 
-local function build_snapshot(include_logs)
+local function clone_snapshot(snapshot, include_logs)
+	local copy = {}
+	local key
+	for key, value in pairs(snapshot or {}) do
+		if include_logs or key ~= "logs" then
+			copy[key] = value
+		end
+	end
+	return copy
+end
+
+local function invalidate_snapshot_cache()
+	snapshot_cache.full = nil
+	snapshot_cache.created_at = 0
+end
+
+local function get_request_token()
+	local http = require "luci.http"
+	return trim(http.formvalue("token"))
+end
+
+local function is_valid_request_token()
+	local disp = require "luci.dispatcher"
+	local expected = trim((disp.context and disp.context.authtoken) or "")
+	if expected == "" then
+		return true
+	end
+	return get_request_token() == expected
+end
+
+local function build_snapshot(include_logs, force_refresh)
 	local fs = require "nixio.fs"
+	local now = os.time()
+	if not force_refresh and snapshot_cache.full and (now - snapshot_cache.created_at) < SNAPSHOT_CACHE_TTL then
+		return clone_snapshot(snapshot_cache.full, include_logs)
+	end
+
 	local pid = get_pid()
 	local running = pid ~= ""
 	local enabled = shell_ok("test -L /etc/rc.d/S90jludrcom")
@@ -476,11 +514,12 @@ local function build_snapshot(include_logs)
 		network = network_state
 	}
 
-	if include_logs then
-		snapshot.logs = log_state.text
-	end
+	snapshot.logs = log_state.text
 
-	return snapshot
+	snapshot_cache.full = clone_snapshot(snapshot, true)
+	snapshot_cache.created_at = now
+
+	return clone_snapshot(snapshot_cache.full, include_logs)
 end
 
 local function run_service_action(action)
@@ -538,13 +577,26 @@ end
 
 function service_action()
 	local http = require "luci.http"
+	if http.getenv("REQUEST_METHOD") ~= "POST" then
+		http.status(405, "Method Not Allowed")
+		write_json({ ok = false, error = translate("POST is required.") })
+		return
+	end
+
+	if not is_valid_request_token() then
+		http.status(403, "Forbidden")
+		write_json({ ok = false, error = translate("Request token mismatch.") })
+		return
+	end
+
 	local action = trim(http.formvalue("action"))
 	local ok, message = run_service_action(action)
+	invalidate_snapshot_cache()
 	write_json({
 		ok = ok,
 		action = action,
 		message = message,
-		status = build_snapshot(false),
+		status = build_snapshot(false, true),
 		error = ok and nil or message
 	})
 end
@@ -566,9 +618,14 @@ function render_form()
 
 	if http.getenv("REQUEST_METHOD") == "POST" then
 		local action = trim(http.formvalue("service_action"))
-		if action == "save_restart" then
+		if not is_valid_request_token() then
+			http.status(403, "Forbidden")
+			message = translate("Request token mismatch.")
+			message_type = "error"
+		elseif action == "save_restart" then
 			body = (http.formvalue("conf") or ""):gsub("\r\n?", "\n")
 			fs.writefile(CONF_PATH, body)
+			invalidate_snapshot_cache()
 			if shell_ok(INIT_PATH .. " restart") then
 				message = translate("Configuration saved. Service restarting (check status and logs below).")
 				message_type = "success"
@@ -580,10 +637,11 @@ function render_form()
 			local ok, action_message = run_service_action(action)
 			message = action_message
 			message_type = ok and "success" or "error"
+			invalidate_snapshot_cache()
 		end
 	end
 
-	local snapshot = build_snapshot(true)
+	local snapshot = build_snapshot(true, true)
 
 	tpl.render("jludrcom/form", {
 		token = token,

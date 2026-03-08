@@ -400,7 +400,7 @@
 			<input type="hidden" name="token" value="<%=token%>" />
 			<textarea id="conf" name="conf" rows="20"><%=conf%></textarea>
 			<div class="cbi-page-actions" style="margin-top: 14px;">
-				<button type="submit" class="jludrcom-button cbi-button-apply"><%:Save & Restart%></button>
+				<button type="submit" name="service_action" value="save_restart" class="jludrcom-button cbi-button-apply"><%:Save & Restart%></button>
 			</div>
 		</form>
 		<p class="jludrcom-editor-meta"><%:Recommended debug flow:%> <%:stop service -> run in foreground -> observe live logs -> fix config -> restart service.%></p>
@@ -432,6 +432,9 @@
 	var serviceUrl = '<%=service_url%>';
 	var token = '<%=token%>';
 	var autoRefresh = true;
+	var refreshBusy = false;
+	var refreshTimer = null;
+	var AUTO_REFRESH_INTERVAL = 10000;
 
 	function byId(id) { return document.getElementById(id); }
 	function setText(id, value) { var node = byId(id); if (node) { node.textContent = value || '-'; } }
@@ -450,12 +453,14 @@
 	function request(method, url, data, callback) {
 		var xhr = new XMLHttpRequest();
 		xhr.onreadystatechange = function() {
+			var ok;
 			var payload = null;
 			if (xhr.readyState !== 4) { return; }
 			if (xhr.responseText) {
 				try { payload = JSON.parse(xhr.responseText); } catch (error) { payload = null; }
 			}
-			callback(xhr.status >= 200 && xhr.status < 300, payload, xhr);
+			ok = xhr.status >= 200 && xhr.status < 300 && (!xhr.responseText || payload !== null);
+			callback(ok, payload, xhr);
 		};
 		if (method === 'POST') {
 			xhr.open('POST', url, true);
@@ -592,32 +597,73 @@
 		if (data.errors) { renderErrors(data.errors, data.last_error || null); }
 	}
 
-	function refreshStatus(silent) {
+	function clearRefreshTimer() {
+		if (refreshTimer) {
+			window.clearTimeout(refreshTimer);
+			refreshTimer = null;
+		}
+	}
+
+	function scheduleRefresh(delay) {
+		clearRefreshTimer();
+		if (!autoRefresh || document.hidden) { return; }
+		refreshTimer = window.setTimeout(function() { refreshAll(true); }, delay || AUTO_REFRESH_INTERVAL);
+	}
+
+	function refreshStatus(done) {
 		request('GET', statusUrl, null, function(ok, data) {
-			if (ok && data) { renderStatus(data); if (!silent) { setFeedback('Status refreshed successfully.', 'is-ok'); } }
-			else { renderNetwork(null); if (!silent) { setFeedback('Failed to refresh current status.', 'is-error'); } }
+			if (ok && data) { renderStatus(data); }
+			else { renderNetwork(null); }
+			if (done) { done(ok, data); }
 		});
 	}
 
-	function refreshLogs(silent) {
+	function refreshLogs(done) {
 		request('GET', logsUrl, null, function(ok, data) {
-			if (ok && data) { renderLogs(data); if (!silent) { setFeedback('Logs refreshed successfully.', 'is-ok'); } }
-			else if (!silent) { setFeedback('Failed to refresh logs.', 'is-error'); }
+			if (ok && data) { renderLogs(data); }
+			if (done) { done(ok, data); }
 		});
 	}
 
-	function refreshAll(silent) { refreshStatus(silent); refreshLogs(true); }
+	function refreshAll(silent) {
+		if (refreshBusy) {
+			if (!silent) { setFeedback('Refresh already in progress.', 'is-pending'); }
+			return;
+		}
+
+		clearRefreshTimer();
+		refreshBusy = true;
+		refreshStatus(function(statusOk) {
+			refreshLogs(function(logsOk) {
+				refreshBusy = false;
+				if (!silent) {
+					if (statusOk && logsOk) {
+						setFeedback('Status and logs refreshed successfully.', 'is-ok');
+					} else if (statusOk) {
+						setFeedback('Status refreshed, but logs update failed.', 'is-warning');
+					} else if (logsOk) {
+						setFeedback('Logs refreshed, but status update failed.', 'is-warning');
+					} else {
+						setFeedback('Failed to refresh current status and logs.', 'is-error');
+					}
+				}
+				scheduleRefresh();
+			});
+		});
+	}
 
 	function triggerService(action) {
+		clearRefreshTimer();
 		setFeedback('Submitting service action: ' + action + '...', 'is-pending');
 		setControlsDisabled(true);
 		request('POST', serviceUrl, { token: token, action: action }, function(ok, data) {
 			if (ok && data && data.ok) {
 				if (data.status) { renderStatus(data.status); }
 				setFeedback(data.message || 'Service action completed.', 'is-ok');
-				window.setTimeout(function() { refreshAll(true); }, 1200);
+				window.setTimeout(function() { refreshAll(true); }, 1500);
 			} else {
 				setFeedback((data && data.error) ? data.error : 'Service action failed.', 'is-error');
+				scheduleRefresh(AUTO_REFRESH_INTERVAL);
 			}
 			setControlsDisabled(false);
 		});
@@ -633,13 +679,30 @@
 		byId('jludrcom-toggle-refresh').onclick = function() {
 			autoRefresh = !autoRefresh;
 			this.textContent = autoRefresh ? 'Pause Auto Refresh' : 'Resume Auto Refresh';
-			setFeedback(autoRefresh ? 'Auto refresh enabled.' : 'Auto refresh paused.', autoRefresh ? 'is-ok' : 'is-pending');
+			if (autoRefresh) {
+				setFeedback(document.hidden ? 'Auto refresh will resume when the tab becomes visible.' : 'Auto refresh enabled.', 'is-ok');
+				scheduleRefresh(1000);
+			} else {
+				clearRefreshTimer();
+				setFeedback('Auto refresh paused.', 'is-pending');
+			}
 		};
+		if (document.addEventListener) {
+			document.addEventListener('visibilitychange', function() {
+				if (!autoRefresh) { return; }
+				if (document.hidden) {
+					clearRefreshTimer();
+					setFeedback('Auto refresh paused while this tab is hidden.', 'is-pending');
+				} else {
+					setFeedback('Auto refresh resumed.', 'is-ok');
+					refreshAll(true);
+				}
+			});
+		}
 	}
 
 	bindActions();
 	refreshAll(false);
-	window.setInterval(function() { if (autoRefresh) { refreshAll(true); } }, 5000);
 })();
 </script>
 <%+footer%>
