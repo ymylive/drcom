@@ -131,8 +131,47 @@ jobs:
           pattern: jludrcom-*-openwrt-*
 
       - name: Publish release assets
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b
-        with:
-          generate_release_notes: true
-          files: |
-            dist/**/*.ipk
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          mapfile -t ipk_files < <(find dist -type f -name '*.ipk' | sort)
+          if [ "${#ipk_files[@]}" -eq 0 ]; then
+            echo 'No ipk files found to publish.' >&2
+            exit 1
+          fi
+
+          sha256sum "${ipk_files[@]}" > dist/SHA256SUMS
+
+          if ! gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --generate-notes
+          fi
+
+          upload_with_retry() {
+            local file="$1"
+            local attempt=1
+            local delay=15
+
+            while true; do
+              if gh release upload "${GITHUB_REF_NAME}" "$file" --clobber; then
+                return 0
+              fi
+
+              if [ "$attempt" -ge 5 ]; then
+                echo "Failed to upload $file after $attempt attempts." >&2
+                return 1
+              fi
+
+              echo "Upload retry $attempt for $file after ${delay}s." >&2
+              sleep "$delay"
+              attempt=$((attempt + 1))
+              delay=$((delay * 2))
+            done
+          }
+
+          for file in "${ipk_files[@]}" dist/SHA256SUMS; do
+            upload_with_retry "$file"
+            sleep 5
+          done
