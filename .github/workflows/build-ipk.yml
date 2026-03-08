@@ -198,7 +198,10 @@ jobs:
 
           ensure_release_with_retry
 
+          echo 'Cooling down before release asset uploads to avoid secondary rate limits.' >&2
+          sleep 300
+
           for file in "$bundle_path" dist/SHA256SUMS; do
             upload_with_retry "$file"
-            sleep 5
+            sleep 15
           done
