@@ -143,7 +143,9 @@ jobs:
             exit 1
           fi
 
-          sha256sum "${ipk_files[@]}" > dist/SHA256SUMS
+          bundle_path="dist/${PACKAGE_NAME}-openwrt-${OPENWRT_RELEASE}-all-arches.tar.gz"
+          tar -czf "$bundle_path" "${ipk_files[@]}"
+          sha256sum "$bundle_path" > dist/SHA256SUMS
 
           ensure_release_with_retry() {
             local attempt=1
@@ -196,7 +198,7 @@ jobs:
 
           ensure_release_with_retry
 
-          for file in "${ipk_files[@]}" dist/SHA256SUMS; do
+          for file in "$bundle_path" dist/SHA256SUMS; do
             upload_with_retry "$file"
             sleep 5
           done
