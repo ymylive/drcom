@@ -145,31 +145,56 @@ jobs:
 
           sha256sum "${ipk_files[@]}" > dist/SHA256SUMS
 
-          if ! gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
-            gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --generate-notes
-          fi
+          ensure_release_with_retry() {
+            local attempt=1
+            local delay=15
+            local output=''
+
+            while true; do
+              output="$(gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --generate-notes 2>&1)" && return 0
+
+              if printf '%s' "$output" | grep -qi 'already exists'; then
+                return 0
+              fi
+
+              if [ "$attempt" -ge 5 ]; then
+                printf '%s\n' "$output" >&2
+                echo "Failed to create release after $attempt attempts." >&2
+                return 1
+              fi
+
+              printf '%s\n' "$output" >&2
+              echo "Release creation retry $attempt after ${delay}s." >&2
+              sleep "$delay"
+              attempt=$((attempt + 1))
+              delay=$((delay * 2))
+            done
+          }
 
           upload_with_retry() {
             local file="$1"
             local attempt=1
             local delay=15
+            local output=''
 
             while true; do
-              if gh release upload "${GITHUB_REF_NAME}" "$file" --clobber; then
-                return 0
-              fi
+              output="$(gh release upload "${GITHUB_REF_NAME}" "$file" --clobber 2>&1)" && return 0
 
               if [ "$attempt" -ge 5 ]; then
+                printf '%s\n' "$output" >&2
                 echo "Failed to upload $file after $attempt attempts." >&2
                 return 1
               fi
 
+              printf '%s\n' "$output" >&2
               echo "Upload retry $attempt for $file after ${delay}s." >&2
               sleep "$delay"
               attempt=$((attempt + 1))
               delay=$((delay * 2))
             done
           }
+
+          ensure_release_with_retry
 
           for file in "${ipk_files[@]}" dist/SHA256SUMS; do
             upload_with_retry "$file"
