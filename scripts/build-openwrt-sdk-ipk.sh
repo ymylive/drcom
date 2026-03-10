@@ -1,0 +1,240 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PACKAGE_ROOT=""
+OPENWRT_RELEASE=""
+TARGET=""
+SUBTARGET=""
+PKGARCH_HINT=""
+SDK_ROOT=""
+OUTPUT_DIR=""
+WORK_ROOT=""
+
+usage() {
+  cat <<'EOF'
+Usage:
+  build-openwrt-sdk-ipk.sh \
+    --package-root <path> \
+    --release <release> \
+    --target <target> \
+    --subtarget <subtarget> \
+    --output-dir <path> \
+    [--pkgarch <pkgarch>] \
+    [--sdk-root <path>] \
+    [--work-root <path>]
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --package-root) PACKAGE_ROOT="$2"; shift 2 ;;
+    --release) OPENWRT_RELEASE="$2"; shift 2 ;;
+    --target) TARGET="$2"; shift 2 ;;
+    --subtarget) SUBTARGET="$2"; shift 2 ;;
+    --pkgarch) PKGARCH_HINT="$2"; shift 2 ;;
+    --sdk-root) SDK_ROOT="$2"; shift 2 ;;
+    --output-dir) OUTPUT_DIR="$2"; shift 2 ;;
+    --work-root) WORK_ROOT="$2"; shift 2 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown argument: $1" >&2; usage; exit 1 ;;
+  esac
+done
+
+if [[ -z "$PACKAGE_ROOT" || -z "$OPENWRT_RELEASE" || -z "$TARGET" || -z "$SUBTARGET" || -z "$OUTPUT_DIR" ]]; then
+  usage
+  exit 1
+fi
+
+PACKAGE_ROOT="$(cd "$PACKAGE_ROOT" && pwd)"
+OUTPUT_DIR="$(mkdir -p "$OUTPUT_DIR" && cd "$OUTPUT_DIR" && pwd)"
+WORK_ROOT="${WORK_ROOT:-$PACKAGE_ROOT/../.work}"
+WORK_ROOT="$(mkdir -p "$WORK_ROOT" && cd "$WORK_ROOT" && pwd)"
+
+resolve_sdk_root() {
+  if [[ -n "$SDK_ROOT" ]]; then
+    SDK_ROOT="$(cd "$SDK_ROOT" && pwd)"
+    return 0
+  fi
+
+  local base_url sha256sums sdk_line sdk_sha256 sdk_url
+  base_url="https://downloads.openwrt.org/releases/${OPENWRT_RELEASE}/targets/${TARGET}/${SUBTARGET}/"
+  sha256sums="$(curl --fail --location --silent --show-error "${base_url}sha256sums")"
+  sdk_line="$(printf '%s\n' "$sha256sums" | grep -E "openwrt-sdk-${OPENWRT_RELEASE}-${TARGET}-${SUBTARGET}_.+\\.Linux-x86_64\\.tar\\.(zst|xz|gz)$" | head -n 1 || true)"
+  if [[ -z "$sdk_line" ]]; then
+    echo "Failed to discover SDK archive for ${TARGET}/${SUBTARGET} on OpenWrt ${OPENWRT_RELEASE}" >&2
+    exit 1
+  fi
+  sdk_sha256="${sdk_line%% *}"
+  sdk_url="${base_url}${sdk_line##* }"
+
+  local cache_dir archive_name archive_path extract_dir detected_root
+  cache_dir="$WORK_ROOT/sdk-cache"
+  mkdir -p "$cache_dir"
+  archive_name="$(basename "$sdk_url")"
+  archive_path="$cache_dir/$archive_name"
+
+  if [[ ! -f "$archive_path" ]]; then
+    curl --fail --location --silent --show-error "$sdk_url" --output "$archive_path"
+  fi
+
+  echo "${sdk_sha256}  ${archive_path}" | sha256sum --check --status
+
+  extract_dir="$WORK_ROOT/sdk-${TARGET}-${SUBTARGET}"
+  rm -rf "$extract_dir"
+  mkdir -p "$extract_dir"
+
+  case "$archive_name" in
+    *.tar.zst) tar --zstd -xf "$archive_path" -C "$extract_dir" ;;
+    *.tar.xz) tar -xJf "$archive_path" -C "$extract_dir" ;;
+    *.tar.gz) tar -xzf "$archive_path" -C "$extract_dir" ;;
+    *) echo "Unsupported SDK archive: $archive_name" >&2; exit 1 ;;
+  esac
+
+  detected_root="$(find "$extract_dir" -mindepth 1 -maxdepth 1 -type d -name 'openwrt-sdk-*' | head -n 1)"
+  if [[ -z "$detected_root" ]]; then
+    echo "Failed to locate extracted SDK root." >&2
+    exit 1
+  fi
+  SDK_ROOT="$detected_root"
+}
+
+read_pkg_value() {
+  local key="$1"
+  sed -n "s/^${key}:=//p" "$PACKAGE_ROOT/Makefile" | head -n 1
+}
+
+resolve_sdk_root
+
+PKG_NAME="$(read_pkg_value PKG_NAME)"
+PKG_VERSION="$(read_pkg_value PKG_VERSION)"
+PKG_RELEASE="$(read_pkg_value PKG_RELEASE)"
+PKG_FULL_VERSION="${PKG_VERSION}-${PKG_RELEASE}"
+
+if [[ -z "$PKG_NAME" || -z "$PKG_VERSION" || -z "$PKG_RELEASE" ]]; then
+  echo "Failed to parse package metadata from Makefile." >&2
+  exit 1
+fi
+
+TOOLCHAIN_DIR="$(find "$SDK_ROOT/staging_dir" -mindepth 1 -maxdepth 1 -type d -name 'toolchain-*' | head -n 1)"
+if [[ -z "$TOOLCHAIN_DIR" ]]; then
+  echo "Failed to locate toolchain directory in SDK." >&2
+  exit 1
+fi
+
+SDK_PKGARCH="$(sed -n 's/^CONFIG_TARGET_ARCH_PACKAGES=\"\([^\"]*\)\"/\1/p' "$SDK_ROOT/.config" | head -n 1 || true)"
+if [[ -z "$SDK_PKGARCH" ]]; then
+  SDK_PKGARCH="$(basename "$TOOLCHAIN_DIR")"
+  SDK_PKGARCH="${SDK_PKGARCH#toolchain-}"
+  SDK_PKGARCH="${SDK_PKGARCH%%_gcc-*}"
+fi
+if [[ -z "$SDK_PKGARCH" ]]; then
+  echo "Failed to determine package architecture from SDK." >&2
+  exit 1
+fi
+
+if [[ -n "$PKGARCH_HINT" && "$PKGARCH_HINT" != "$SDK_PKGARCH" ]]; then
+  echo "pkgarch mismatch: expected $PKGARCH_HINT, got $SDK_PKGARCH" >&2
+  exit 1
+fi
+
+CC="$(find "$TOOLCHAIN_DIR/bin" -maxdepth 1 -type f -name '*-gcc' | head -n 1)"
+if [[ -z "$CC" ]]; then
+  echo "Failed to locate cross compiler in SDK." >&2
+  exit 1
+fi
+STRIP="${CC%-gcc}-strip"
+export STAGING_DIR="$TOOLCHAIN_DIR"
+
+BUILD_DIR="$WORK_ROOT/build-${TARGET}-${SUBTARGET}"
+SRC_BUILD_DIR="$BUILD_DIR/src"
+PKG_BUILD_DIR="$BUILD_DIR/pkg"
+
+rm -rf "$BUILD_DIR"
+mkdir -p "$SRC_BUILD_DIR" "$PKG_BUILD_DIR/CONTROL"
+cp -a "$PACKAGE_ROOT/src/." "$SRC_BUILD_DIR/"
+
+make -C "$SRC_BUILD_DIR" clean >/dev/null 2>&1 || true
+make -C "$SRC_BUILD_DIR" \
+  CC="$CC" \
+  TARGET="jludrcom" \
+  CPPFLAGS="-I." \
+  CFLAGS="-std=gnu99 -Wno-unused-result" \
+  >/dev/null
+
+if [[ -x "$STRIP" ]]; then
+  "$STRIP" "$SRC_BUILD_DIR/jludrcom" || true
+fi
+
+mkdir -p \
+  "$PKG_BUILD_DIR/usr/bin" \
+  "$PKG_BUILD_DIR/etc" \
+  "$PKG_BUILD_DIR/etc/init.d" \
+  "$PKG_BUILD_DIR/usr/lib/lua/luci/controller" \
+  "$PKG_BUILD_DIR/usr/lib/lua/luci/view/jludrcom"
+
+cp "$SRC_BUILD_DIR/jludrcom" "$PKG_BUILD_DIR/usr/bin/jludrcom"
+cp "$PACKAGE_ROOT/files/etc/drcom.conf" "$PKG_BUILD_DIR/etc/drcom.conf"
+cp "$PACKAGE_ROOT/files/etc/init.d/jludrcom" "$PKG_BUILD_DIR/etc/init.d/jludrcom"
+cp "$PACKAGE_ROOT/files/usr/lib/lua/luci/controller/jludrcom.lua" "$PKG_BUILD_DIR/usr/lib/lua/luci/controller/jludrcom.lua"
+cp "$PACKAGE_ROOT/files/usr/lib/lua/luci/view/jludrcom/form.htm" "$PKG_BUILD_DIR/usr/lib/lua/luci/view/jludrcom/form.htm"
+
+sed -i 's/\r$//' \
+  "$PKG_BUILD_DIR/etc/drcom.conf" \
+  "$PKG_BUILD_DIR/etc/init.d/jludrcom" \
+  "$PKG_BUILD_DIR/usr/lib/lua/luci/controller/jludrcom.lua" \
+  "$PKG_BUILD_DIR/usr/lib/lua/luci/view/jludrcom/form.htm"
+
+chmod 0755 "$PKG_BUILD_DIR/usr/bin/jludrcom" "$PKG_BUILD_DIR/etc/init.d/jludrcom"
+
+INSTALLED_SIZE="$(( $(du -sk "$PKG_BUILD_DIR" | awk '{print $1}') * 1024 ))"
+
+cat > "$PKG_BUILD_DIR/CONTROL/control" <<EOF
+Package: $PKG_NAME
+Version: $PKG_FULL_VERSION
+Depends: luci-base
+Section: net
+Category: Network
+Title: JLU DrCOM client with LuCI dashboard
+Maintainer: ymylive
+Architecture: $SDK_PKGARCH
+Installed-Size: $INSTALLED_SIZE
+Description: JLU DrCOM client for OpenWrt routers with LuCI dashboard, live logs and automatic UDP 61440 port recovery.
+EOF
+
+cat > "$PKG_BUILD_DIR/CONTROL/conffiles" <<'EOF'
+/etc/drcom.conf
+EOF
+
+cat > "$PKG_BUILD_DIR/CONTROL/postinst" <<'EOF'
+#!/bin/sh
+[ -n "$IPKG_INSTROOT" ] && exit 0
+if [ -x /etc/init.d/uhttpd ]; then
+  /etc/init.d/uhttpd reload >/dev/null 2>&1 || true
+fi
+if [ -x /etc/init.d/jludrcom ] && [ -x /usr/bin/jludrcom ]; then
+  /etc/init.d/jludrcom enable >/dev/null 2>&1 || true
+fi
+exit 0
+EOF
+
+cat > "$PKG_BUILD_DIR/CONTROL/prerm" <<'EOF'
+#!/bin/sh
+[ -n "$IPKG_INSTROOT" ] && exit 0
+if [ -x /etc/init.d/jludrcom ]; then
+  /etc/init.d/jludrcom stop >/dev/null 2>&1 || true
+fi
+exit 0
+EOF
+
+chmod 0755 "$PKG_BUILD_DIR/CONTROL/postinst" "$PKG_BUILD_DIR/CONTROL/prerm"
+
+"$SDK_ROOT/scripts/ipkg-build" "$PKG_BUILD_DIR" "$OUTPUT_DIR" >/dev/null
+
+OUTPUT_IPK="$OUTPUT_DIR/${PKG_NAME}_${PKG_FULL_VERSION}_${SDK_PKGARCH}.ipk"
+if [[ ! -f "$OUTPUT_IPK" ]]; then
+  echo "Expected output package not found: $OUTPUT_IPK" >&2
+  exit 1
+fi
+
+sha256sum "$OUTPUT_IPK" > "${OUTPUT_IPK}.sha256"
+echo "$OUTPUT_IPK"

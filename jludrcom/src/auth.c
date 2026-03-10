@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
@@ -24,6 +25,55 @@ typedef int socklen_t;
 
 #define BIND_PORT 61440
 #define DEST_PORT 61440
+
+static int login_retry_delay_seconds = 3;
+
+static void reset_login_retry_delay(void) {
+    login_retry_delay_seconds = 3;
+}
+
+static int current_login_retry_delay(void) {
+    return login_retry_delay_seconds > 0 ? login_retry_delay_seconds : 3;
+}
+
+static int extract_retry_after_seconds(const unsigned char *packet, int packet_length) {
+    int value = 0;
+    int have_digits = 0;
+    int index;
+
+    if (packet == NULL || packet_length <= 20) {
+        return 0;
+    }
+
+    for (index = 20; index < packet_length && packet[index] != 0x00; index++) {
+        unsigned char ch = packet[index];
+
+        if (isdigit((unsigned char)ch)) {
+            if (value < 100000) {
+                value = value * 10 + (ch - '0');
+            }
+            have_digits = 1;
+            continue;
+        }
+
+        if (have_digits) {
+            int lookahead = index;
+            while (lookahead < packet_length && packet[lookahead] == ' ') {
+                lookahead++;
+            }
+            if (lookahead < packet_length && (packet[lookahead] == 's' || packet[lookahead] == 'S')) {
+                if (value > 0 && value <= 1800) {
+                    return value;
+                }
+                return 0;
+            }
+            value = 0;
+            have_digits = 0;
+        }
+    }
+
+    return 0;
+}
 
 int dhcp_challenge(int sockfd, struct sockaddr_in addr, unsigned char seed[]) {
     unsigned char challenge_packet[20], recv_packet[1024];
@@ -50,7 +100,10 @@ int dhcp_challenge(int sockfd, struct sockaddr_in addr, unsigned char seed[]) {
 #endif
 
     socklen_t addrlen = sizeof(addr);
-    if (recvfrom(sockfd, recv_packet, 1024, 0, (struct sockaddr *)&addr, &addrlen) < 0) {
+    reset_login_retry_delay();
+
+    int recv_length = recvfrom(sockfd, recv_packet, 1024, 0, (struct sockaddr *)&addr, &addrlen);
+    if (recv_length < 0) {
 #ifdef WIN32
         get_lasterror("Failed to recv data");
 #else
@@ -275,7 +328,8 @@ int dhcp_login(int sockfd, struct sockaddr_in addr, unsigned char seed[], unsign
 #endif
 
     socklen_t addrlen = sizeof(addr);
-    if (recvfrom(sockfd, recv_packet, 1024, 0, (struct sockaddr *)&addr, &addrlen) < 0) {
+    int recv_length = recvfrom(sockfd, recv_packet, 1024, 0, (struct sockaddr *)&addr, &addrlen);
+    if (recv_length < 0) {
 #ifdef WIN32
         get_lasterror("Failed to recv data");
 #else
@@ -286,15 +340,16 @@ int dhcp_login(int sockfd, struct sockaddr_in addr, unsigned char seed[], unsign
 
     if (recv_packet[0] != 0x04) {
         if (verbose_flag) {
-            print_packet("[login recv] ", recv_packet, 100);
+            print_packet("[login recv] ", recv_packet, recv_length);
         }
         printf("<<< Login failed >>>\n");
         if (logging_flag) {
-            logging("[login recv] ", recv_packet, 100);
+            logging("[login recv] ", recv_packet, recv_length);
             logging("<<< Login failed >>>", NULL, 0);
         }
         char err_msg[256];
         if (recv_packet[0] == 0x05) {
+            int retry_after_seconds = extract_retry_after_seconds(recv_packet, recv_length);
             switch (recv_packet[4]) {
                 case CHECK_MAC:
                     strcpy(err_msg, "[Tips] Someone is using this account with wired.");
@@ -321,7 +376,12 @@ int dhcp_login(int sockfd, struct sockaddr_in addr, unsigned char seed[], unsign
                     strcpy(err_msg, "[Tips] This account has too many IP addresses.");
                     break;
                 case UPDATE_CLIENT:
-                    strcpy(err_msg, "[Tips] The client version is incorrect.");
+                    if (retry_after_seconds > 0) {
+                        snprintf(err_msg, sizeof(err_msg), "[Tips] Server forced this account offline and started a cooldown. Retry after %d seconds.", retry_after_seconds);
+                        login_retry_delay_seconds = retry_after_seconds;
+                    } else {
+                        strcpy(err_msg, "[Tips] The server rejected the current client signature/version.");
+                    }
                     break;
                 case NOT_ON_THIS_IP_MAC:
                     strcpy(err_msg, "[Tips] This account can only be used on specified MAC and IP address.");
@@ -341,11 +401,11 @@ int dhcp_login(int sockfd, struct sockaddr_in addr, unsigned char seed[], unsign
         return 1;
     } else {
         if (verbose_flag) {
-            print_packet("[login recv] ", recv_packet, 100);
+            print_packet("[login recv] ", recv_packet, recv_length);
         }
         printf("<<< Logged in >>>\n");
         if (logging_flag) {
-            logging("[login recv] ", recv_packet, 100);
+            logging("[login recv] ", recv_packet, recv_length);
             logging("<<< Logged in >>>", NULL, 0);
         }
     }
@@ -642,12 +702,16 @@ int dogcom(int try_times) {
                         }
                     }
                 } else {
+                    int retry_delay_seconds;
                     login_failed_attempts += 1;
-                    printf("Retrying...\n");
+                    retry_delay_seconds = current_login_retry_delay();
+                    printf("Retrying in %d seconds...\n", retry_delay_seconds);
                     if (logging_flag) {
-                        logging("Retrying...", NULL, 0);
+                        char retry_msg[64];
+                        snprintf(retry_msg, sizeof(retry_msg), "Retrying in %d seconds...", retry_delay_seconds);
+                        logging(retry_msg, NULL, 0);
                     }
-                    sleep(3);
+                    sleep(retry_delay_seconds);
                 };
             }
         }

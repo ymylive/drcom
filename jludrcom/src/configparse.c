@@ -219,7 +219,17 @@ static int parse_bool_string(const char *value, int *result) {
         return 0;
     }
 
+    if (strcmp(value, "1") == 0) {
+        *result = 1;
+        return 0;
+    }
+
     if (equals_ignore_case(value, "False")) {
+        *result = 0;
+        return 0;
+    }
+
+    if (strcmp(value, "0") == 0) {
         *result = 0;
         return 0;
     }
@@ -352,6 +362,8 @@ static int read_d_config(char *buf) {
             return 1;
         }
         debug_log_string("PRIMARY_DNS", drcom_config.PRIMARY_DNS, 0);
+    } else if (strcmp(key, "SECONDARY_DNS") == 0) {
+        debug_log_string("SECONDARY_DNS", value, 0);
     } else if (strcmp(key, "dhcp_server") == 0) {
         if (copy_checked(drcom_config.dhcp_server, sizeof(drcom_config.dhcp_server), value, "dhcp_server") != 0) {
             return 1;
@@ -398,6 +410,27 @@ static int read_d_config(char *buf) {
         }
         drcom_config.keepalive1_mod = parsed_bool;
         DEBUG_PRINT(("[PARSER_DEBUG]keepalive1_mod=%d\n", drcom_config.keepalive1_mod));
+    } else if (strcmp(key, "bind_ip") == 0) {
+        if (copy_checked(bind_ip, sizeof(bind_ip), value, "bind_ip") != 0) {
+            return 1;
+        }
+        debug_log_string("bind_ip", bind_ip, 0);
+    } else if (strcmp(key, "log") == 0) {
+        char *copy = strdup(value);
+        if (copy == NULL) {
+            fprintf(stderr, "Out of memory while copying log path.\n");
+            return 1;
+        }
+        free(log_path);
+        log_path = copy;
+        logging_flag = 1;
+        debug_log_string("log", log_path, 0);
+    } else if (strcmp(key, "eternal") == 0) {
+        if (parse_bool_string(value, &parsed_bool) != 0) {
+            return 1;
+        }
+        eternal_flag = parsed_bool;
+        DEBUG_PRINT(("[PARSER_DEBUG]eternal=%d\n", eternal_flag));
     } else {
         return 1;
     }

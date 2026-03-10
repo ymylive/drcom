@@ -31,6 +31,13 @@ local function translate(text)
 	return i18n.translate(text)
 end
 
+local function localized_message(key, text)
+	return {
+		key = key,
+		text = translate(text)
+	}
+end
+
 local function trim(value)
 	if value == nil then
 		return ""
@@ -54,6 +61,15 @@ local function split_lines(text)
 		end
 	end
 	return lines
+end
+
+local function count_keys(items)
+	local total = 0
+	local _
+	for _ in pairs(items or {}) do
+		total = total + 1
+	end
+	return total
 end
 
 local function shell_exec(command)
@@ -124,6 +140,9 @@ local function validate_config(conf)
 	}
 	local missing_keys = {}
 	local warnings = {}
+	local function add_warning(key, text)
+		table.insert(warnings, localized_message(key, text))
+	end
 
 	for _, key in ipairs(required_keys) do
 		if trim(conf.keys[key]) == "" then
@@ -132,27 +151,30 @@ local function validate_config(conf)
 	end
 
 	if conf.keys.server ~= nil and conf.keys.server ~= "" and not conf.keys.server:match("^%d+%.%d+%.%d+%.%d+$") then
-		table.insert(warnings, translate("server should be an IPv4 address."))
+		add_warning("config.warning.serverIpv4", "server should be an IPv4 address.")
 	end
 
 	if conf.keys.host_ip ~= nil and conf.keys.host_ip ~= "" and not conf.keys.host_ip:match("^%d+%.%d+%.%d+%.%d+$") then
-		table.insert(warnings, translate("host_ip should be an IPv4 address."))
+		add_warning("config.warning.hostIpIpv4", "host_ip should be an IPv4 address.")
 	end
 
-	if conf.keys.mac ~= nil and conf.keys.mac ~= "" and not conf.keys.mac:match("^0x[%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x]$") then
-		table.insert(warnings, translate("mac should use dogcom format like 0xB025AA851014."))
+	if conf.keys.mac ~= nil and conf.keys.mac ~= "" and not (
+		conf.keys.mac:match("^0x[%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x][%x]$") or
+		conf.keys.mac:match("^[%x][%x]:[%x][%x]:[%x][%x]:[%x][%x]:[%x][%x]:[%x][%x]$")
+	) then
+		add_warning("config.warning.macFormat", "mac should use either 0xB025AA851014 or B0:25:AA:85:10:14.")
 	end
 
 	if conf.keys.ror_version ~= nil and conf.keys.ror_version ~= "" and conf.keys.ror_version ~= "True" and conf.keys.ror_version ~= "False" then
-		table.insert(warnings, translate("ror_version should be True or False."))
+		add_warning("config.warning.rorVersion", "ror_version should be True or False.")
 	end
 
 	if conf.keys.keepalive1_mod == nil or conf.keys.keepalive1_mod == "" then
-		table.insert(warnings, translate("keepalive1_mod is recommended to improve compatibility."))
+		add_warning("config.warning.keepalive1Mod", "keepalive1_mod is recommended to improve compatibility.")
 	end
 
 	if conf.non_empty_lines ~= 0 and count_keys(conf.keys) == 0 then
-		table.insert(warnings, translate("Configuration uses an unsupported format; prefer dogcom-style key = 'value' lines."))
+		add_warning("config.warning.unsupportedFormat", "Configuration uses an unsupported format; prefer dogcom-style key = 'value' lines.")
 	end
 
 	return {
@@ -240,6 +262,43 @@ local function read_state_file(path)
 	return parse_config(fs.readfile(path) or "")
 end
 
+local function first_ipv4_address(runtime)
+	local entries = runtime and runtime["ipv4-address"]
+	local first = entries and entries[1]
+	if not first then
+		return ""
+	end
+	return trim(first.address or "")
+end
+
+local function read_wan_runtime()
+	local raw = shell_exec("ubus call network.interface.wan status")
+	local data = nil
+	local proto = trim(shell_exec("uci -q get network.wan.proto"))
+	local device = ""
+	local address = ""
+
+	if raw ~= "" and json then
+		if json.parse then
+			data = json.parse(raw)
+		elseif json.decode then
+			data = json.decode(raw)
+		end
+	end
+
+	if data then
+		proto = trim(data.proto or proto)
+		device = trim(data.l3_device or data.device or "")
+		address = first_ipv4_address(data)
+	end
+
+	return {
+		proto = proto,
+		device = device,
+		address = address
+	}
+end
+
 local function detect_challenge(log_text)
 	local send_line = ""
 	local lines = split_lines(log_text)
@@ -272,6 +331,7 @@ end
 
 local function build_network_state(conf, log_text, service_pid)
 	local state = read_state_file(PORT_STATE_PATH)
+	local wan_runtime = read_wan_runtime()
 	local configured_server = trim(conf.keys.server)
 	local configured_host_ip = trim(conf.keys.host_ip)
 	local route_line = ""
@@ -310,6 +370,9 @@ local function build_network_state(conf, log_text, service_pid)
 		auto_port_recovery = true,
 		configured_server = configured_server,
 		configured_host_ip = configured_host_ip,
+		wan_proto = wan_runtime.proto,
+		wan_device = wan_runtime.device,
+		wan_address = wan_runtime.address,
 		route_line = route_line,
 		interface = route_interface,
 		route_source_ip = route_source_ip,
@@ -334,17 +397,20 @@ local function build_network_state(conf, log_text, service_pid)
 	}
 end
 
-local function append_issue(issues, seen, severity, title, line, hint)
-	if title == nil or title == "" or seen[title] then
+local function append_issue(issues, seen, severity, title_key, title_text, line, hint_key, hint_text)
+	local dedupe_key = title_key or title_text or ""
+	if dedupe_key == "" or seen[dedupe_key] then
 		return
 	end
 
-	seen[title] = true
+	seen[dedupe_key] = true
 	table.insert(issues, {
 		severity = severity,
-		title = title,
+		title_key = title_key,
+		title = translate(title_text),
 		line = trim(line),
-		hint = hint
+		hint_key = hint_key,
+		hint = translate(hint_text)
 	})
 end
 
@@ -357,23 +423,25 @@ local function extract_issues(log_text, config_state, running, network_state)
 	for index = #lines, 1, -1 do
 		local line = lines[index]
 		if line:match("Segmentation fault") then
-			append_issue(issues, seen, "critical", translate("Program crashed"), line, translate("Check config format carefully, especially mac and boolean fields."))
+			append_issue(issues, seen, "critical", "issue.programCrashed.title", "Program crashed", line, "issue.programCrashed.hint", "Check config format carefully, especially mac and boolean fields.")
 		elseif line:match("Failed to bind socket") or line:match("Address in use") then
-			append_issue(issues, seen, "warning", translate("Port 61440 is occupied"), line, translate("Stop duplicate jludrcom processes before starting a foreground session."))
+			append_issue(issues, seen, "warning", "issue.portOccupied.title", "Port 61440 is occupied", line, "issue.portOccupied.hint", "Stop duplicate jludrcom processes before starting a foreground session.")
 		elseif line:match("Permission denied") then
-			append_issue(issues, seen, "critical", translate("Permission problem detected"), line, translate("Verify executable permissions for init script, binary, and opkg scripts."))
+			append_issue(issues, seen, "critical", "issue.permissionProblem.title", "Permission problem detected", line, "issue.permissionProblem.hint", "Verify executable permissions for init script, binary, and opkg scripts.")
+		elseif line:match("Server forced this account offline") or line:match("Retrying in %d+ seconds") then
+			append_issue(issues, seen, "warning", nil, "Server cooldown is active", line, nil, "The campus server temporarily blocks re-login after a forced logout. Wait for the reported cooldown before retrying.")
 		elseif line:match("Password error") or line:match("Account and password not match") then
-			append_issue(issues, seen, "critical", translate("Authentication failed"), line, translate("Confirm username and password from the campus account."))
+			append_issue(issues, seen, "critical", "issue.authFailed.title", "Authentication failed", line, "issue.authFailed.hint", "Confirm username and password from the campus account.")
 		elseif line:match("No this user") then
-			append_issue(issues, seen, "critical", translate("User does not exist"), line, translate("Check the username format exported from the official client."))
+			append_issue(issues, seen, "critical", "issue.userNotFound.title", "User does not exist", line, "issue.userNotFound.hint", "Check the username format exported from the official client.")
 		elseif line:match("Not server in range") or line:match("Failed to recv data") then
-			append_issue(issues, seen, "warning", translate("Server did not respond"), line, translate("Verify server, host_ip, upstream interface, and whether 802.1X is required."))
+			append_issue(issues, seen, "warning", "issue.serverNoResponse.title", "Server did not respond", line, "issue.serverNoResponse.hint", "Verify server, host_ip, upstream interface, and whether 802.1X is required.")
 		elseif line:match("crash loop") then
-			append_issue(issues, seen, "critical", translate("Service is crashing repeatedly"), line, translate("Run jludrcom in foreground and inspect the latest error before re-enabling respawn."))
+			append_issue(issues, seen, "critical", "issue.crashLoop.title", "Service is crashing repeatedly", line, "issue.crashLoop.hint", "Run jludrcom in foreground and inspect the latest error before re-enabling respawn.")
 		elseif line:match("Failed to keep in touch") then
-			append_issue(issues, seen, "warning", translate("Keepalive failed"), line, translate("Login may have succeeded but keepalive packets are not being acknowledged."))
+			append_issue(issues, seen, "warning", "issue.keepaliveFailed.title", "Keepalive failed", line, "issue.keepaliveFailed.hint", "Login may have succeeded but keepalive packets are not being acknowledged.")
 		elseif line:match("Login success") then
-			append_issue(issues, seen, "info", translate("Login succeeded recently"), line, translate("If Internet still fails, continue checking route, DNS, and NAT status."))
+			append_issue(issues, seen, "info", "issue.loginSucceeded.title", "Login succeeded recently", line, "issue.loginSucceeded.hint", "If Internet still fails, continue checking route, DNS, and NAT status.")
 		end
 
 		if #issues >= 5 then
@@ -382,34 +450,32 @@ local function extract_issues(log_text, config_state, running, network_state)
 	end
 
 	if not running then
-		append_issue(issues, seen, "warning", translate("Service is not running"), "", translate("Use Start or Restart after fixing the reported configuration or runtime issue."))
+		append_issue(issues, seen, "warning", "issue.serviceNotRunning.title", "Service is not running", "", "issue.serviceNotRunning.hint", "Use Start or Restart after fixing the reported configuration or runtime issue.")
 	end
 
 	if network_state then
 		if network_state.port_blocked then
-			append_issue(issues, seen, "warning", translate("Port 61440 is still occupied"), network_state.port_line, translate("The service now attempts automatic recovery before start, but another process still owns the socket."))
+			append_issue(issues, seen, "warning", "issue.portStillOccupied.title", "Port 61440 is still occupied", network_state.port_line, "issue.portStillOccupied.hint", "The service now attempts automatic recovery before start, but another process still owns the socket.")
 		end
 
 		if network_state.recovery_status == "failed" or network_state.recovery_status == "busy" then
-			append_issue(issues, seen, "warning", translate("Automatic port recovery failed"), network_state.recovery_message, translate("Inspect the listed PIDs and stop the conflicting process manually if needed."))
+			append_issue(issues, seen, "warning", "issue.autoRecoveryFailed.title", "Automatic port recovery failed", network_state.recovery_message, "issue.autoRecoveryFailed.hint", "Inspect the listed PIDs and stop the conflicting process manually if needed.")
 		elseif network_state.recovery_status == "recovered" then
-			append_issue(issues, seen, "info", translate("Automatic port recovery succeeded"), network_state.recovery_message, translate("The service cleared stale listeners before binding port 61440."))
+			append_issue(issues, seen, "info", "issue.autoRecoverySucceeded.title", "Automatic port recovery succeeded", network_state.recovery_message, "issue.autoRecoverySucceeded.hint", "The service cleared stale listeners before binding port 61440.")
 		end
 
-		if network_state.configured_server ~= "" and network_state.route_line == "" then
-			append_issue(issues, seen, "critical", translate("No route to authentication server"), network_state.configured_server, translate("Check WAN link, upstream interface, and whether the configured server IP is reachable from the router."))
-		elseif network_state.configured_host_ip ~= "" and network_state.route_source_ip ~= "" and network_state.configured_host_ip ~= network_state.route_source_ip then
-			append_issue(issues, seen, "warning", translate("host_ip does not match the active route source"), network_state.route_source_ip, translate("Update host_ip to the source address chosen by the current route, or pin the route/interface first."))
+		if network_state.configured_host_ip ~= "" and network_state.route_source_ip ~= "" and network_state.configured_host_ip ~= network_state.route_source_ip then
+			append_issue(issues, seen, "warning", "issue.hostIpMismatch.title", "host_ip does not match the active route source", network_state.route_source_ip, "issue.hostIpMismatch.hint", "Update host_ip to the source address chosen by the current route, or pin the route/interface first.")
 		end
 	end
 
 	if not config_state.valid then
-		append_issue(issues, seen, "warning", translate("Configuration is incomplete"), table.concat(config_state.missing_keys, ", "), translate("Fill in the missing required keys before restarting the service."))
+		append_issue(issues, seen, "warning", "issue.configIncomplete.title", "Configuration is incomplete", table.concat(config_state.missing_keys, ", "), "issue.configIncomplete.hint", "Fill in the missing required keys before restarting the service.")
 	end
 
 	local idx
 	for idx = 1, #config_state.warnings do
-		append_issue(issues, seen, "info", translate("Configuration warning"), config_state.warnings[idx], translate("Review the config editor helper text for recommended formatting."))
+		append_issue(issues, seen, "info", "issue.configWarning.title", "Configuration warning", config_state.warnings[idx].text, "issue.configWarning.hint", "Review the config editor helper text for recommended formatting.")
 		if #issues >= 5 then
 			break
 		end
@@ -532,18 +598,18 @@ local function run_service_action(action)
 	}
 
 	if not allowed[action] then
-		return false, translate("Unsupported service action.")
+		return false, localized_message("service.unsupportedAction", "Unsupported service action.")
 	end
 
 	if not shell_ok("test -x " .. INIT_PATH) then
-		return false, translate("Service script is missing or not executable.")
+		return false, localized_message("service.scriptMissing", "Service script is missing or not executable.")
 	end
 
 	if not shell_ok(INIT_PATH .. " " .. action) then
-		return false, translate("Service command failed.")
+		return false, localized_message("service.commandFailed", "Service command failed.")
 	end
 
-	return true, translate("Service action submitted.")
+	return true, localized_message("service.actionSubmitted", "Service action submitted.")
 end
 
 function index()
@@ -579,13 +645,15 @@ function service_action()
 	local http = require "luci.http"
 	if http.getenv("REQUEST_METHOD") ~= "POST" then
 		http.status(405, "Method Not Allowed")
-		write_json({ ok = false, error = translate("POST is required.") })
+		local message = localized_message("form.postRequired", "POST is required.")
+		write_json({ ok = false, error = message.text, error_key = message.key })
 		return
 	end
 
 	if not is_valid_request_token() then
 		http.status(403, "Forbidden")
-		write_json({ ok = false, error = translate("Request token mismatch.") })
+		local message = localized_message("form.requestTokenMismatch", "Request token mismatch.")
+		write_json({ ok = false, error = message.text, error_key = message.key })
 		return
 	end
 
@@ -595,9 +663,11 @@ function service_action()
 	write_json({
 		ok = ok,
 		action = action,
-		message = message,
+		message = message.text,
+		message_key = message.key,
 		status = build_snapshot(false, true),
-		error = ok and nil or message
+		error = ok and nil or message.text,
+		error_key = ok and nil or message.key
 	})
 end
 
@@ -613,6 +683,7 @@ function render_form()
 	local service_url = disp.build_url("admin", "services", "jludrcom", "service")
 
 	local message
+	local message_key
 	local message_type = "success"
 	local body = fs.readfile(CONF_PATH) or ""
 
@@ -620,22 +691,29 @@ function render_form()
 		local action = trim(http.formvalue("service_action"))
 		if not is_valid_request_token() then
 			http.status(403, "Forbidden")
-			message = translate("Request token mismatch.")
+			local info = localized_message("form.requestTokenMismatch", "Request token mismatch.")
+			message = info.text
+			message_key = info.key
 			message_type = "error"
 		elseif action == "save_restart" then
 			body = (http.formvalue("conf") or ""):gsub("\r\n?", "\n")
 			fs.writefile(CONF_PATH, body)
 			invalidate_snapshot_cache()
 			if shell_ok(INIT_PATH .. " restart") then
-				message = translate("Configuration saved. Service restarting (check status and logs below).")
+				local info = localized_message("form.configSavedRestarting", "Configuration saved. Service restarting (check status and logs below).")
+				message = info.text
+				message_key = info.key
 				message_type = "success"
 			else
-				message = translate("Configuration saved, but restart failed. Review the status and logs panels below.")
+				local info = localized_message("form.configSavedRestartFailed", "Configuration saved, but restart failed. Review the status and logs panels below.")
+				message = info.text
+				message_key = info.key
 				message_type = "error"
 			end
 		elseif action ~= "" then
 			local ok, action_message = run_service_action(action)
-			message = action_message
+			message = action_message.text
+			message_key = action_message.key
 			message_type = ok and "success" or "error"
 			invalidate_snapshot_cache()
 		end
@@ -647,6 +725,7 @@ function render_form()
 		token = token,
 		conf = body,
 		message = message,
+		message_key = message_key,
 		message_type = message_type,
 		status = snapshot,
 		logs = snapshot.logs or "",

@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=jludrcom
 PKG_VERSION:=1.0.0
-PKG_RELEASE:=5
+PKG_RELEASE:=12
 
 PKG_MAINTAINER:=ymylive
 PKG_LICENSE:=AGPL-3.0-or-later

@@ -4,3 +4,8 @@
 *.tar.gz
 .DS_Store
 Thumbs.db
+dist/
+.work/
+jludrcom/src/*.o
+jludrcom/src/jludrcom
+jludrcom/src/tests/parser_smoke

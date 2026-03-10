@@ -10,6 +10,7 @@ static void set_mode_value(const char *value);
 static int test_valid_dhcp_config(void);
 static int test_rejects_overlong_value(void);
 static int test_rejects_invalid_auth_version(void);
+static int test_accepts_legacy_quoted_config(void);
 
 static int write_file(const char *path, const char *content) {
     FILE *file = fopen(path, "w");
@@ -147,6 +148,58 @@ static int test_rejects_invalid_auth_version(void) {
     return 0;
 }
 
+static int test_accepts_legacy_quoted_config(void) {
+    const char *path = "tests/parser_legacy.conf";
+    const char *content =
+        "server='10.100.61.3'\n"
+        "username='student'\n"
+        "password='secret'\n"
+        "PRIMARY_DNS='10.10.10.10'\n"
+        "SECONDARY_DNS='8.8.8.8'\n"
+        "host_name='fuyumi'\n"
+        "host_os='Windows 10'\n"
+        "mac='DE:F3:75:89:E1:20'\n"
+        "host_ip='172.18.27.227'\n"
+        "dhcp_server='0.0.0.0'\n"
+        "CONTROLCHECKSTATUS='\\x20'\n"
+        "ADAPTERNUM='\\x05'\n"
+        "IPDOG='\\x01'\n"
+        "AUTH_VERSION='\\x2c\\x00'\n"
+        "KEEP_ALIVE_VERSION='\\xdc\\x02'\n"
+        "ror_version=0\n"
+        "keepalive1_mod=1\n"
+        "bind_ip='0.0.0.0'\n"
+        "log='/tmp/jludrcom.log'\n"
+        "eternal=1\n";
+
+    memset(bind_ip, 0, sizeof(bind_ip));
+    free(log_path);
+    log_path = NULL;
+    logging_flag = 0;
+    eternal_flag = 0;
+    set_mode_value("dhcp");
+
+    if (write_file(path, content) != 0) {
+        return 1;
+    }
+
+    if (expect_true("legacy config parses", config_parse((char *)path) == 0) != 0) {
+        remove(path);
+        return 1;
+    }
+
+    if (expect_string("legacy bind_ip parsed", bind_ip, "0.0.0.0") != 0 ||
+        expect_true("legacy log enables logging", logging_flag == 1) != 0 ||
+        expect_true("legacy eternal parsed", eternal_flag == 1) != 0 ||
+        expect_true("legacy mac parsed", drcom_config.mac[0] == 0xDE && drcom_config.mac[5] == 0x20) != 0) {
+        remove(path);
+        return 1;
+    }
+
+    remove(path);
+    return 0;
+}
+
 int main(void) {
     if (test_valid_dhcp_config() != 0) {
         return 1;
@@ -155,6 +208,9 @@ int main(void) {
         return 1;
     }
     if (test_rejects_invalid_auth_version() != 0) {
+        return 1;
+    }
+    if (test_accepts_legacy_quoted_config() != 0) {
         return 1;
     }
 

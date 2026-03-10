@@ -16,6 +16,14 @@
 		color: var(--jl-text);
 	}
 
+	.jludrcom-page h2,
+	.jludrcom-page h3 {
+		background: none !important;
+		border: 0 !important;
+		box-shadow: none !important;
+		padding: 0 !important;
+	}
+
 	.jludrcom-hero,
 	.jludrcom-card,
 	.jludrcom-editor,
@@ -31,6 +39,47 @@
 		margin-bottom: 18px;
 	}
 
+	.jludrcom-hero-head {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 16px;
+		margin-bottom: 10px;
+	}
+
+	.jludrcom-hero-copy {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+
+	.jludrcom-locale {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		min-width: 168px;
+	}
+
+	.jludrcom-locale-label {
+		margin-bottom: 0;
+	}
+
+	.jludrcom-select {
+		min-height: 44px;
+		padding: 0 12px;
+		border-radius: 12px;
+		border: 1px solid var(--jl-border);
+		background: rgba(2, 6, 23, 0.92);
+		color: #f8fafc;
+		cursor: pointer;
+		transition: border-color 180ms ease, background 180ms ease;
+	}
+
+	.jludrcom-select:hover,
+	.jludrcom-select:focus {
+		border-color: rgba(56, 189, 248, 0.6);
+		background: rgba(2, 6, 23, 1);
+	}
+
 	.jludrcom-hero h2 {
 		margin: 0 0 8px;
 		font-size: 28px;
@@ -43,8 +92,19 @@
 	.jludrcom-meta,
 	.jludrcom-empty {
 		margin: 0;
-		color: var(--jl-muted);
+		color: #cbd5e1;
 		line-height: 1.6;
+	}
+
+	.jludrcom-help code,
+	.jludrcom-callout code {
+		display: inline-block;
+		padding: 2px 8px;
+		border-radius: 999px;
+		border: 1px solid rgba(148, 163, 184, 0.32);
+		background: rgba(2, 6, 23, 0.9);
+		color: #e2e8f0;
+		font: 600 12px/1.5 "Fira Code", Consolas, Monaco, monospace;
 	}
 
 	.jludrcom-feedback,
@@ -98,8 +158,8 @@
 	.jludrcom-editor h3,
 	.jludrcom-panel h3 {
 		margin: 0 0 12px;
-		font-size: 16px;
-		font-weight: 600;
+		font-size: 18px;
+		font-weight: 700;
 		color: #f8fafc;
 	}
 
@@ -172,15 +232,42 @@
 	.jludrcom-key {
 		display: block;
 		margin-bottom: 4px;
-		color: var(--jl-muted);
+		color: #cbd5e1;
 		font-size: 12px;
+		font-weight: 700;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
 	}
 
 	.jludrcom-value {
 		display: block;
+		color: #f8fafc;
+		line-height: 1.6;
+		font-weight: 600;
 		word-break: break-word;
+	}
+
+	.jludrcom-callout {
+		margin-top: 16px;
+		padding: 16px 18px;
+		border-radius: 14px;
+		border: 1px solid rgba(56, 189, 248, 0.34);
+		background: linear-gradient(180deg, rgba(12, 74, 110, 0.24), rgba(15, 23, 42, 0.94));
+		box-shadow: inset 0 1px 0 rgba(125, 211, 252, 0.12);
+	}
+
+	.jludrcom-callout-title {
+		display: block;
+		margin-bottom: 8px;
+		color: #e0f2fe;
+		font-size: 14px;
+		font-weight: 700;
+		letter-spacing: 0.02em;
+	}
+
+	.jludrcom-callout-body {
+		color: #dbeafe;
+		line-height: 1.7;
 	}
 
 	.jludrcom-actions {
@@ -260,6 +347,7 @@
 	}
 
 	#conf:focus,
+	#conf:hover,
 	.jludrcom-toggle:focus,
 	.jludrcom-refresh:focus,
 	.jludrcom-button:focus {
@@ -270,6 +358,42 @@
 	.jludrcom-editor-meta {
 		margin-top: 10px;
 		font-size: 13px;
+	}
+
+	.jludrcom-config-example {
+		margin: 14px 0 16px;
+		padding: 14px;
+		border-radius: 14px;
+		border: 1px solid rgba(56, 189, 248, 0.28);
+		background: linear-gradient(180deg, rgba(15, 23, 42, 0.86), rgba(2, 6, 23, 0.96));
+	}
+
+	.jludrcom-config-example-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px 12px;
+		margin-bottom: 10px;
+	}
+
+	.jludrcom-config-example-note {
+		color: #cbd5e1;
+		font-size: 13px;
+		line-height: 1.6;
+	}
+
+	.jludrcom-config-example-code {
+		margin: 0;
+		padding: 14px;
+		border-radius: 12px;
+		border: 1px solid rgba(51, 65, 85, 0.85);
+		background: #020617;
+		color: #e2e8f0;
+		overflow: auto;
+		white-space: pre-wrap;
+		word-break: break-word;
+		font: 13px/1.65 "Fira Code", Consolas, Monaco, monospace;
 	}
 
 	#jludrcom-log-output {
@@ -305,6 +429,14 @@
 	}
 
 	@media (max-width: 960px) {
+		.jludrcom-hero-head {
+			flex-direction: column;
+		}
+
+		.jludrcom-locale {
+			width: 100%;
+		}
+
 		.jludrcom-panel-grid {
 			grid-template-columns: 1fr;
 		}
@@ -321,106 +453,145 @@
 
 <div class="jludrcom-page">
 	<div class="jludrcom-hero">
-		<h2><%:DrCOM for JLU%></h2>
-		<p><%:Expanded operations dashboard with current status, error diagnosis, and live logs for faster troubleshooting.%></p>
-		<p class="jludrcom-help"><%:Config parser compatibility tip:%> <code>mac = 0xB025AA851014</code>, <code>keepalive1_mod = True</code>, <%:and avoid unsupported free-form syntax when debugging crashes.%></p>
+		<div class="jludrcom-hero-head">
+			<div class="jludrcom-hero-copy">
+				<h2 data-i18n="page_title"><%:DrCOM for JLU%></h2>
+				<p data-i18n="page_subtitle"><%:Expanded operations dashboard with current status, error diagnosis, and live logs for faster troubleshooting.%></p>
+			</div>
+			<label class="jludrcom-locale" for="jludrcom-language">
+				<span class="jludrcom-key jludrcom-locale-label" data-i18n="language_label">Language</span>
+				<select id="jludrcom-language" class="jludrcom-select">
+					<option value="en" data-i18n="language_option_en">English</option>
+					<option value="zh-CN" data-i18n="language_option_zh">简体中文</option>
+				</select>
+			</label>
+		</div>
+		<p class="jludrcom-help">Use old dogcom syntax / 请使用旧版 dogcom 语法：<code>key='value'</code>, <code>mac=0xB025AA851014</code>, <code>keepalive1_mod=True</code>.</p>
+		<div class="jludrcom-callout">
+			<span class="jludrcom-callout-title" data-i18n="campus_network_tip_title"><%:Campus network note%></span>
+			<p class="jludrcom-callout-body" data-i18n="campus_network_tip_body"><%:Some schools require the WAN side to use a static IP configuration before DrCOM authentication. If the challenge stage keeps retrying without a reply, verify whether your campus requires manually assigned IP, gateway, and DNS settings first.%></p>
+		</div>
 		<% if message then %>
-			<div class="jludrcom-message <% if message_type == "error" then %>is-error<% else %>is-ok<% end %>"><%=message%></div>
+			<div id="jludrcom-form-message" data-message-key="<%=message_key or ""%>" class="jludrcom-message <% if message_type == "error" then %>is-error<% else %>is-ok<% end %>"><%=message%></div>
 		<% end %>
-		<div id="jludrcom-feedback" class="jludrcom-feedback is-pending"><%:Loading status, logs, and diagnostics...%></div>
+		<div id="jludrcom-feedback" class="jludrcom-feedback is-pending" data-i18n="feedback_loading"><%:Loading status, logs, and diagnostics...%></div>
 	</div>
 
 	<div class="jludrcom-grid">
 		<div class="jludrcom-card">
 			<div class="jludrcom-kpi">
-				<h3><%:Current Status%></h3>
-				<span id="jludrcom-service-state" class="jludrcom-badge is-warning"><%:Checking%></span>
+				<h3 data-i18n="current_status"><%:Current Status%></h3>
+				<span id="jludrcom-service-state" class="jludrcom-badge is-warning" data-i18n="checking"><%:Checking%></span>
 			</div>
 			<ul class="jludrcom-list">
-				<li><span class="jludrcom-key"><%:Process ID%></span><span id="jludrcom-service-pid" class="jludrcom-value">-</span></li>
-				<li><span class="jludrcom-key"><%:Autostart%></span><span id="jludrcom-service-enabled" class="jludrcom-value">-</span></li>
-				<li><span class="jludrcom-key"><%:Log Source%></span><span id="jludrcom-log-source" class="jludrcom-value"><%=log_path%></span></li>
-				<li><span class="jludrcom-key"><%:Last Refresh%></span><span id="jludrcom-updated-at" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key" data-i18n="process_id"><%:Process ID%></span><span id="jludrcom-service-pid" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key" data-i18n="autostart"><%:Autostart%></span><span id="jludrcom-service-enabled" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key" data-i18n="log_source"><%:Log Source%></span><span id="jludrcom-log-source" class="jludrcom-value"><%=log_path%></span></li>
+				<li><span class="jludrcom-key" data-i18n="last_refresh"><%:Last Refresh%></span><span id="jludrcom-updated-at" class="jludrcom-value">-</span></li>
 			</ul>
 		</div>
 
 		<div class="jludrcom-card">
 			<div class="jludrcom-kpi">
-				<h3><%:Config Health%></h3>
-				<span id="jludrcom-config-state" class="jludrcom-badge is-warning"><%:Checking%></span>
+				<h3 data-i18n="config_health"><%:Config Health%></h3>
+				<span id="jludrcom-config-state" class="jludrcom-badge is-warning" data-i18n="checking"><%:Checking%></span>
 			</div>
 			<ul class="jludrcom-list">
-				<li><span class="jludrcom-key"><%:Missing Keys%></span><span id="jludrcom-config-missing" class="jludrcom-value">-</span></li>
-				<li><span class="jludrcom-key"><%:Warnings%></span><span id="jludrcom-config-warnings" class="jludrcom-value">-</span></li>
-				<li><span class="jludrcom-key"><%:Parsed Keys%></span><span id="jludrcom-config-count" class="jludrcom-value">-</span></li>
-				<li><span class="jludrcom-key"><%:Config Path%></span><span class="jludrcom-value"><%=conf_path%></span></li>
+				<li><span class="jludrcom-key" data-i18n="missing_keys"><%:Missing Keys%></span><span id="jludrcom-config-missing" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key" data-i18n="warnings"><%:Warnings%></span><span id="jludrcom-config-warnings" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key" data-i18n="parsed_keys"><%:Parsed Keys%></span><span id="jludrcom-config-count" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key" data-i18n="config_path"><%:Config Path%></span><span class="jludrcom-value"><%=conf_path%></span></li>
 			</ul>
 		</div>
 
 		<div class="jludrcom-card">
 			<div class="jludrcom-kpi">
-				<h3><%:Last Error%></h3>
-				<span id="jludrcom-error-state" class="jludrcom-badge is-info"><%:Waiting%></span>
+				<h3 data-i18n="last_error"><%:Last Error%></h3>
+				<span id="jludrcom-error-state" class="jludrcom-badge is-info" data-i18n="waiting"><%:Waiting%></span>
 			</div>
 			<ul class="jludrcom-list">
-				<li><span class="jludrcom-key"><%:Summary%></span><span id="jludrcom-error-title" class="jludrcom-value">-</span></li>
-				<li><span class="jludrcom-key"><%:Evidence%></span><span id="jludrcom-error-line" class="jludrcom-value">-</span></li>
-				<li><span class="jludrcom-key"><%:Suggested Fix%></span><span id="jludrcom-error-hint" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key" data-i18n="summary"><%:Summary%></span><span id="jludrcom-error-title" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key" data-i18n="evidence"><%:Evidence%></span><span id="jludrcom-error-line" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key" data-i18n="suggested_fix"><%:Suggested Fix%></span><span id="jludrcom-error-hint" class="jludrcom-value">-</span></li>
 			</ul>
 		</div>
 
 		<div class="jludrcom-card">
 			<div class="jludrcom-kpi">
-				<h3><%:Network Status%></h3>
-				<span id="jludrcom-network-state" class="jludrcom-badge is-info"><%:Loading%></span>
+				<h3 data-i18n="network_status"><%:Network Status%></h3>
+				<span id="jludrcom-network-state" class="jludrcom-badge is-info" data-i18n="loading"><%:Loading%></span>
 			</div>
 			<ul class="jludrcom-list">
-				<li><span class="jludrcom-key"><%:Bind Port%></span><span id="jludrcom-network-bind" class="jludrcom-value">-</span></li>
-				<li><span class="jludrcom-key"><%:Upstream Path%></span><span id="jludrcom-network-route" class="jludrcom-value">-</span></li>
-				<li><span class="jludrcom-key"><%:Configured host_ip / Active src%></span><span id="jludrcom-network-host-ip" class="jludrcom-value">-</span></li>
-				<li><span class="jludrcom-key"><%:Challenge State%></span><span id="jludrcom-network-challenge" class="jludrcom-value">-</span></li>
-				<li><span class="jludrcom-key"><%:Port Owners / PIDs%></span><span id="jludrcom-network-port-owners" class="jludrcom-value">-</span></li>
-				<li><span class="jludrcom-key"><%:Auto Recovery%></span><span id="jludrcom-network-recovery" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key" data-i18n="bind_port"><%:Bind Port%></span><span id="jludrcom-network-bind" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key" data-i18n="upstream_path"><%:Upstream Path%></span><span id="jludrcom-network-route" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key" data-i18n="configured_host_ip"><%:Configured host_ip / Active src%></span><span id="jludrcom-network-host-ip" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key" data-i18n="challenge_state"><%:Challenge State%></span><span id="jludrcom-network-challenge" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key" data-i18n="port_owners"><%:Port Owners / PIDs%></span><span id="jludrcom-network-port-owners" class="jludrcom-value">-</span></li>
+				<li><span class="jludrcom-key" data-i18n="auto_recovery"><%:Auto Recovery%></span><span id="jludrcom-network-recovery" class="jludrcom-value">-</span></li>
 			</ul>
 		</div>
 	</div>
 
 	<div class="jludrcom-actions">
-		<button type="button" class="jludrcom-button" data-service-action="start"><%:Start Service%></button>
-		<button type="button" class="jludrcom-button cbi-button-apply" data-service-action="restart"><%:Restart Service%></button>
-		<button type="button" class="jludrcom-button is-danger" data-service-action="stop"><%:Stop Service%></button>
-		<button type="button" id="jludrcom-refresh-all" class="jludrcom-refresh"><%:Refresh Now%></button>
+		<button type="button" class="jludrcom-button" data-service-action="start" data-i18n="start_service"><%:Start Service%></button>
+		<button type="button" class="jludrcom-button cbi-button-apply" data-service-action="restart" data-i18n="restart_service"><%:Restart Service%></button>
+		<button type="button" class="jludrcom-button is-danger" data-service-action="stop" data-i18n="stop_service"><%:Stop Service%></button>
+		<button type="button" id="jludrcom-refresh-all" class="jludrcom-refresh" data-i18n="refresh_now"><%:Refresh Now%></button>
 		<button type="button" id="jludrcom-toggle-refresh" class="jludrcom-toggle"><%:Pause Auto Refresh%></button>
 	</div>
 
 	<div class="jludrcom-editor">
-		<h3><%:Config Editor%></h3>
-		<p class="jludrcom-help"><%:Use the official dogcom-style syntax. The runtime checker below highlights missing keys and common format mistakes before you restart the service.%></p>
+		<h3 data-i18n="config_editor"><%:Config Editor%></h3>
+		<p class="jludrcom-help">Use the official dogcom-style syntax. The sample below uses the safest compatibility form for this package: single quotes for strings, 0x MAC, and explicit AUTH / KEEP_ALIVE fields. / 请使用官方 dogcom 风格语法。下方样例采用本包兼容性最稳的写法：字符串单引号、0x 格式 MAC，以及明确填写 AUTH / KEEP_ALIVE 字段。</p>
+		<div class="jludrcom-config-example">
+			<div class="jludrcom-config-example-head">
+				<span class="jludrcom-callout-title">Reference Sample / 参考样例</span>
+				<span class="jludrcom-config-example-note">Replace username, password, mac, and host_ip with your own campus values. If the campus binds a physical MAC, use that bound MAC here. / 请将 username、password、mac、host_ip 替换为你自己的校园网参数；如果学校绑定了物理 MAC，这里必须填写绑定后的那个 MAC。</span>
+			</div>
+			<pre class="jludrcom-config-example-code"># Replace username / password / mac / host_ip with your own campus values.
+username='your_username'
+password='your_password'
+server='10.100.61.3'
+PRIMARY_DNS='10.10.10.10'
+SECONDARY_DNS='8.8.8.8'
+host_name='OpenWrt'
+host_os='Windows 10'
+mac=0xB025AA851014
+host_ip='172.18.0.100'
+dhcp_server='0.0.0.0'
+CONTROLCHECKSTATUS='\x20'
+ADAPTERNUM='\x05'
+IPDOG='\x01'
+AUTH_VERSION='\x2c\x00'
+KEEP_ALIVE_VERSION='\xdc\x02'
+ror_version=False
+keepalive1_mod=True</pre>
+		</div>
 		<form method="post" action="">
 			<input type="hidden" name="token" value="<%=token%>" />
 			<textarea id="conf" name="conf" rows="20"><%=conf%></textarea>
 			<div class="cbi-page-actions" style="margin-top: 14px;">
-				<button type="submit" name="service_action" value="save_restart" class="jludrcom-button cbi-button-apply"><%:Save & Restart%></button>
+				<button type="submit" name="service_action" value="save_restart" class="jludrcom-button cbi-button-apply" data-i18n="save_restart"><%:Save & Restart%></button>
 			</div>
 		</form>
-		<p class="jludrcom-editor-meta"><%:Recommended debug flow:%> <%:stop service -> run in foreground -> observe live logs -> fix config -> restart service.%></p>
+		<p class="jludrcom-editor-meta"><span data-i18n="debug_flow_label"><%:Recommended debug flow:%></span> <span data-i18n="debug_flow_steps"><%:stop service -> run in foreground -> observe live logs -> fix config -> restart service.%></span></p>
 	</div>
 
 	<div class="jludrcom-panel-grid">
 		<div class="jludrcom-panel">
 			<div class="jludrcom-panel-head">
-				<h3><%:Diagnostics%></h3>
-				<div class="jludrcom-panel-tools"><span class="jludrcom-meta"><%:Auto-generated from current status and recent log patterns.%></span></div>
+				<h3 data-i18n="diagnostics"><%:Diagnostics%></h3>
+				<div class="jludrcom-panel-tools"><span class="jludrcom-meta" data-i18n="diagnostics_meta"><%:Auto-generated from current status and recent log patterns.%></span></div>
 			</div>
-			<ul id="jludrcom-error-list" class="jludrcom-error-list"><li class="jludrcom-empty"><%:Waiting for diagnostics...%></li></ul>
+			<ul id="jludrcom-error-list" class="jludrcom-error-list"><li class="jludrcom-empty" data-i18n="waiting_diagnostics"><%:Waiting for diagnostics...%></li></ul>
 		</div>
 
 		<div class="jludrcom-panel">
 			<div class="jludrcom-panel-head">
-				<h3><%:Live Logs%></h3>
+				<h3 data-i18n="live_logs"><%:Live Logs%></h3>
 				<div class="jludrcom-panel-tools"><span class="jludrcom-meta" id="jludrcom-log-source-text"><%=log_path%></span></div>
 			</div>
-			<pre id="jludrcom-log-output"><%:Loading logs...%></pre>
+			<pre id="jludrcom-log-output" data-i18n="loading_logs"><%:Loading logs...%></pre>
 		</div>
 	</div>
 </div>
@@ -434,10 +605,441 @@
 	var autoRefresh = true;
 	var refreshBusy = false;
 	var refreshTimer = null;
+	var lastStatusData = null;
+	var lastLogsData = null;
 	var AUTO_REFRESH_INTERVAL = 10000;
-
+	var LANGUAGE_STORAGE_KEY = 'jludrcom.language';
+	var currentLanguage = 'en';
+	var translations = {
+		en: {
+			page_title: 'DrCOM for JLU',
+			page_subtitle: 'Expanded operations dashboard with current status, error diagnosis, and live logs for faster troubleshooting.',
+			language_label: 'Language',
+			language_option_en: 'English',
+			language_option_zh: '简体中文',
+			config_tip_label: 'Config parser compatibility tip:',
+			config_tip_suffix: 'and avoid unsupported free-form syntax when debugging crashes.',
+			campus_network_tip_title: 'Campus network note',
+			campus_network_tip_body: 'Some schools require the WAN side to use a static IP configuration before DrCOM authentication. If the challenge stage keeps retrying without a reply, verify whether your campus requires manually assigned IP, gateway, and DNS settings first.',
+			feedback_loading: 'Loading status, logs, and diagnostics...',
+			current_status: 'Current Status',
+			process_id: 'Process ID',
+			autostart: 'Autostart',
+			log_source: 'Log Source',
+			last_refresh: 'Last Refresh',
+			config_health: 'Config Health',
+			missing_keys: 'Missing Keys',
+			warnings: 'Warnings',
+			parsed_keys: 'Parsed Keys',
+			config_path: 'Config Path',
+			last_error: 'Last Error',
+			summary: 'Summary',
+			evidence: 'Evidence',
+			suggested_fix: 'Suggested Fix',
+			network_status: 'Network Status',
+			bind_port: 'Bind Port',
+			upstream_path: 'Upstream Path',
+			configured_host_ip: 'Configured host_ip / Active src',
+			challenge_state: 'Challenge State',
+			port_owners: 'Port Owners / PIDs',
+			auto_recovery: 'Auto Recovery',
+			start_service: 'Start Service',
+			restart_service: 'Restart Service',
+			stop_service: 'Stop Service',
+			refresh_now: 'Refresh Now',
+			pause_auto_refresh: 'Pause Auto Refresh',
+			resume_auto_refresh: 'Resume Auto Refresh',
+			config_editor: 'Config Editor',
+			config_editor_help: 'Use the official dogcom-style syntax. The runtime checker below highlights missing keys and common format mistakes before you restart the service.',
+			save_restart: 'Save & Restart',
+			debug_flow_label: 'Recommended debug flow:',
+			debug_flow_steps: 'stop service -> run in foreground -> observe live logs -> fix config -> restart service.',
+			diagnostics: 'Diagnostics',
+			diagnostics_meta: 'Auto-generated from current status and recent log patterns.',
+			waiting_diagnostics: 'Waiting for diagnostics...',
+			live_logs: 'Live Logs',
+			loading_logs: 'Loading logs...',
+			checking: 'Checking',
+			waiting: 'Waiting',
+			loading: 'Loading',
+			valid: 'Valid',
+			needs_attention: 'Needs Attention',
+			none: 'None',
+			clear: 'Clear',
+			issue: 'Issue',
+			critical: 'Critical',
+			warning: 'Warning',
+			info: 'Info',
+			unknown: 'Unknown',
+			unavailable: 'Unavailable',
+			port_blocked: 'Port Blocked',
+			ready: 'Ready',
+			listening: 'Listening',
+			idle: 'Idle',
+			running: 'Running',
+			stopped: 'Stopped',
+			enabled: 'Enabled',
+			disabled: 'Disabled',
+			refresh_busy: 'Refresh already in progress.',
+			refresh_ok: 'Status and logs refreshed successfully.',
+			refresh_status_only: 'Status refreshed, but logs update failed.',
+			refresh_logs_only: 'Logs refreshed, but status update failed.',
+			refresh_failed: 'Failed to refresh current status and logs.',
+			submitting_service_action: 'Submitting service action: {action}...',
+			service_action_done: 'Service action completed.',
+			service_action_failed: 'Service action failed.',
+			auto_refresh_resume_visible: 'Auto refresh will resume when the tab becomes visible.',
+			auto_refresh_enabled: 'Auto refresh enabled.',
+			auto_refresh_paused: 'Auto refresh paused.',
+			auto_refresh_hidden: 'Auto refresh paused while this tab is hidden.',
+			auto_refresh_resumed: 'Auto refresh resumed.',
+			no_obvious_errors: 'No obvious error signatures found in the latest status snapshot.',
+			no_recent_error: 'No recent error detected',
+			continue_monitoring: 'Continue monitoring logs while testing authentication.',
+			no_route_detected: 'Route information unavailable',
+			route_not_checked: 'Route check skipped',
+			no_listener: 'No listener',
+			no_logs_yet: 'No logs available yet.',
+			unknown_iface: 'unknown-iface',
+			no_src: 'no-src',
+			unset: 'unset',
+			auto_recovery_armed: 'Automatic recovery armed before service start.',
+			'config.warning.serverIpv4': 'server should be an IPv4 address.',
+			'config.warning.hostIpIpv4': 'host_ip should be an IPv4 address.',
+			'config.warning.macFormat': 'mac should use dogcom format like 0xB025AA851014.',
+			'config.warning.rorVersion': 'ror_version should be True or False.',
+			'config.warning.keepalive1Mod': 'keepalive1_mod is recommended to improve compatibility.',
+			'config.warning.unsupportedFormat': 'Configuration uses an unsupported format; prefer dogcom-style key = \'value\' lines.',
+			'issue.programCrashed.title': 'Program crashed',
+			'issue.programCrashed.hint': 'Check config format carefully, especially mac and boolean fields.',
+			'issue.portOccupied.title': 'Port 61440 is occupied',
+			'issue.portOccupied.hint': 'Stop duplicate jludrcom processes before starting a foreground session.',
+			'issue.permissionProblem.title': 'Permission problem detected',
+			'issue.permissionProblem.hint': 'Verify executable permissions for init script, binary, and opkg scripts.',
+			'issue.authFailed.title': 'Authentication failed',
+			'issue.authFailed.hint': 'Confirm username and password from the campus account.',
+			'issue.userNotFound.title': 'User does not exist',
+			'issue.userNotFound.hint': 'Check the username format exported from the official client.',
+			'issue.serverNoResponse.title': 'Server did not respond',
+			'issue.serverNoResponse.hint': 'Verify server, host_ip, upstream interface, and whether 802.1X is required.',
+			'issue.crashLoop.title': 'Service is crashing repeatedly',
+			'issue.crashLoop.hint': 'Run jludrcom in foreground and inspect the latest error before re-enabling respawn.',
+			'issue.keepaliveFailed.title': 'Keepalive failed',
+			'issue.keepaliveFailed.hint': 'Login may have succeeded but keepalive packets are not being acknowledged.',
+			'issue.loginSucceeded.title': 'Login succeeded recently',
+			'issue.loginSucceeded.hint': 'If Internet still fails, continue checking route, DNS, and NAT status.',
+			'issue.serviceNotRunning.title': 'Service is not running',
+			'issue.serviceNotRunning.hint': 'Use Start or Restart after fixing the reported configuration or runtime issue.',
+			'issue.portStillOccupied.title': 'Port 61440 is still occupied',
+			'issue.portStillOccupied.hint': 'The service now attempts automatic recovery before start, but another process still owns the socket.',
+			'issue.autoRecoveryFailed.title': 'Automatic port recovery failed',
+			'issue.autoRecoveryFailed.hint': 'Inspect the listed PIDs and stop the conflicting process manually if needed.',
+			'issue.autoRecoverySucceeded.title': 'Automatic port recovery succeeded',
+			'issue.autoRecoverySucceeded.hint': 'The service cleared stale listeners before binding port 61440.',
+			'issue.noRoute.title': 'No route to authentication server',
+			'issue.noRoute.hint': 'Check WAN link, upstream interface, and whether the configured server IP is reachable from the router.',
+			'issue.hostIpMismatch.title': 'host_ip does not match the active route source',
+			'issue.hostIpMismatch.hint': 'Update host_ip to the source address chosen by the current route, or pin the route/interface first.',
+			'issue.configIncomplete.title': 'Configuration is incomplete',
+			'issue.configIncomplete.hint': 'Fill in the missing required keys before restarting the service.',
+			'issue.configWarning.title': 'Configuration warning',
+			'issue.configWarning.hint': 'Review the config editor helper text for recommended formatting.',
+			'service.unsupportedAction': 'Unsupported service action.',
+			'service.scriptMissing': 'Service script is missing or not executable.',
+			'service.commandFailed': 'Service command failed.',
+			'service.actionSubmitted': 'Service action submitted.',
+			'form.postRequired': 'POST is required.',
+			'form.requestTokenMismatch': 'Request token mismatch.',
+			'form.configSavedRestarting': 'Configuration saved. Service restarting (check status and logs below).',
+			'form.configSavedRestartFailed': 'Configuration saved, but restart failed. Review the status and logs panels below.'
+		},
+		'zh-CN': {
+			page_title: '吉林大学 DrCOM',
+			page_subtitle: '扩展运维面板，聚合当前状态、错误诊断与实时日志，加快排障。',
+			language_label: '语言',
+			language_option_en: 'English',
+			language_option_zh: '简体中文',
+			config_tip_label: '配置解析兼容提示：',
+			config_tip_suffix: '调试崩溃时请避免使用不受支持的自由格式写法。',
+			campus_network_tip_title: '校园网接入提示',
+			campus_network_tip_body: '部分学校会要求 WAN 侧先配置静态 IP 后再进行 DrCOM 认证。如果 Challenge 阶段持续重试且没有回包，请优先确认学校是否要求手动填写 IP、网关和 DNS。',
+			feedback_loading: '正在加载状态、日志与诊断信息...',
+			current_status: '当前状态',
+			process_id: '进程 ID',
+			autostart: '开机自启',
+			log_source: '日志来源',
+			last_refresh: '最后刷新',
+			config_health: '配置健康度',
+			missing_keys: '缺失键',
+			warnings: '警告',
+			parsed_keys: '已解析键',
+			config_path: '配置路径',
+			last_error: '最近错误',
+			summary: '概要',
+			evidence: '证据',
+			suggested_fix: '建议修复',
+			network_status: '网络状态',
+			bind_port: '绑定端口',
+			upstream_path: '上游路径',
+			configured_host_ip: '配置的 host_ip / 当前源地址',
+			challenge_state: 'Challenge 状态',
+			port_owners: '端口占用进程 / PID',
+			auto_recovery: '自动恢复',
+			start_service: '启动服务',
+			restart_service: '重启服务',
+			stop_service: '停止服务',
+			refresh_now: '立即刷新',
+			pause_auto_refresh: '暂停自动刷新',
+			resume_auto_refresh: '恢复自动刷新',
+			config_editor: '配置编辑器',
+			config_editor_help: '请使用官方 dogcom 风格语法。下方运行时检查器会在你重启服务前高亮缺失键和常见格式问题。',
+			save_restart: '保存并重启',
+			debug_flow_label: '推荐排障流程：',
+			debug_flow_steps: '停止服务 -> 前台运行 -> 观察实时日志 -> 修正配置 -> 重启服务。',
+			diagnostics: '诊断',
+			diagnostics_meta: '根据当前状态与最近日志模式自动生成。',
+			waiting_diagnostics: '等待生成诊断结果...',
+			live_logs: '实时日志',
+			loading_logs: '正在加载日志...',
+			checking: '检查中',
+			waiting: '等待中',
+			loading: '加载中',
+			valid: '正常',
+			needs_attention: '需要处理',
+			none: '无',
+			clear: '正常',
+			issue: '问题',
+			critical: '严重',
+			warning: '警告',
+			info: '提示',
+			unknown: '未知',
+			unavailable: '不可用',
+			port_blocked: '端口被占用',
+			ready: '就绪',
+			listening: '监听中',
+			idle: '空闲',
+			running: '运行中',
+			stopped: '已停止',
+			enabled: '已启用',
+			disabled: '已禁用',
+			refresh_busy: '刷新已在进行中。',
+			refresh_ok: '状态和日志刷新成功。',
+			refresh_status_only: '状态已刷新，但日志更新失败。',
+			refresh_logs_only: '日志已刷新，但状态更新失败。',
+			refresh_failed: '刷新当前状态和日志失败。',
+			submitting_service_action: '正在提交服务操作：{action}...',
+			service_action_done: '服务操作已完成。',
+			service_action_failed: '服务操作失败。',
+			auto_refresh_resume_visible: '标签页重新可见后会恢复自动刷新。',
+			auto_refresh_enabled: '自动刷新已启用。',
+			auto_refresh_paused: '自动刷新已暂停。',
+			auto_refresh_hidden: '当前标签页隐藏，已暂停自动刷新。',
+			auto_refresh_resumed: '自动刷新已恢复。',
+			no_obvious_errors: '最新状态快照中未发现明显错误特征。',
+			no_recent_error: '最近未检测到错误',
+			continue_monitoring: '测试认证时请继续观察日志。',
+			no_route_detected: '未获取到路由信息',
+			route_not_checked: '未执行路由校验',
+			no_listener: '暂无监听进程',
+			no_logs_yet: '暂无日志。',
+			unknown_iface: '未知接口',
+			no_src: '无源地址',
+			unset: '未设置',
+			auto_recovery_armed: '服务启动前将尝试自动恢复端口。',
+			'config.warning.serverIpv4': 'server 应为 IPv4 地址。',
+			'config.warning.hostIpIpv4': 'host_ip 应为 IPv4 地址。',
+			'config.warning.macFormat': 'mac 应使用 dogcom 格式，例如 0xB025AA851014。',
+			'config.warning.rorVersion': 'ror_version 应为 True 或 False。',
+			'config.warning.keepalive1Mod': '建议填写 keepalive1_mod 以提升兼容性。',
+			'config.warning.unsupportedFormat': '配置格式不受支持；建议使用 dogcom 风格的 key = \'value\' 行。',
+			'issue.programCrashed.title': '程序崩溃',
+			'issue.programCrashed.hint': '请仔细检查配置格式，尤其是 mac 与布尔字段。',
+			'issue.portOccupied.title': '端口 61440 已被占用',
+			'issue.portOccupied.hint': '前台调试前请先停止重复的 jludrcom 进程。',
+			'issue.permissionProblem.title': '检测到权限问题',
+			'issue.permissionProblem.hint': '请检查 init 脚本、二进制文件与 opkg 脚本的执行权限。',
+			'issue.authFailed.title': '认证失败',
+			'issue.authFailed.hint': '请确认校园账号的用户名和密码。',
+			'issue.userNotFound.title': '用户不存在',
+			'issue.userNotFound.hint': '请检查官方客户端导出的用户名格式。',
+			'issue.serverNoResponse.title': '服务器未响应',
+			'issue.serverNoResponse.hint': '请检查 server、host_ip、上游接口，以及是否需要 802.1X。',
+			'issue.crashLoop.title': '服务持续崩溃',
+			'issue.crashLoop.hint': '请先前台运行 jludrcom，确认最新错误后再重新启用守护。',
+			'issue.keepaliveFailed.title': 'Keepalive 失败',
+			'issue.keepaliveFailed.hint': '登录可能已经成功，但保活包未得到确认。',
+			'issue.loginSucceeded.title': '最近登录成功',
+			'issue.loginSucceeded.hint': '若仍无法联网，请继续检查路由、DNS 与 NAT 状态。',
+			'issue.serviceNotRunning.title': '服务未运行',
+			'issue.serviceNotRunning.hint': '修复配置或运行时问题后，请使用启动或重启。',
+			'issue.portStillOccupied.title': '端口 61440 仍被占用',
+			'issue.portStillOccupied.hint': '服务启动前会尝试自动恢复，但仍有其他进程占用该套接字。',
+			'issue.autoRecoveryFailed.title': '自动端口恢复失败',
+			'issue.autoRecoveryFailed.hint': '请检查列出的 PID，并在必要时手动停止冲突进程。',
+			'issue.autoRecoverySucceeded.title': '自动端口恢复成功',
+			'issue.autoRecoverySucceeded.hint': '服务在绑定 61440 端口前已清理陈旧监听器。',
+			'issue.noRoute.title': '到认证服务器没有路由',
+			'issue.noRoute.hint': '请检查 WAN 链路、上游接口，以及路由器是否可以到达配置的服务器 IP。',
+			'issue.hostIpMismatch.title': 'host_ip 与当前路由源地址不一致',
+			'issue.hostIpMismatch.hint': '请将 host_ip 改为当前路由选中的源地址，或先固定路由/接口。',
+			'issue.configIncomplete.title': '配置不完整',
+			'issue.configIncomplete.hint': '请在重启服务前补齐必需键。',
+			'issue.configWarning.title': '配置警告',
+			'issue.configWarning.hint': '请参考配置编辑器下方提示，检查推荐格式。',
+			'service.unsupportedAction': '不支持的服务操作。',
+			'service.scriptMissing': '服务脚本不存在或不可执行。',
+			'service.commandFailed': '服务命令执行失败。',
+			'service.actionSubmitted': '服务操作已提交。',
+			'form.postRequired': '必须使用 POST 请求。',
+			'form.requestTokenMismatch': '请求令牌不匹配。',
+			'form.configSavedRestarting': '配置已保存，服务正在重启（请查看下方状态和日志）。',
+			'form.configSavedRestartFailed': '配置已保存，但重启失败。请查看下方状态和日志面板。'
+		}
+	};
+	var rawTextTranslations = {
+		'Authenticated': '已认证',
+		'Received': '已收到',
+		'Timed out': '超时',
+		'Unreachable': '不可达',
+		'free': '空闲',
+		'listening': '监听中',
+		'blocked': '被占用',
+		'unknown': '未知',
+		'Port 61440 was free before start.': '启动前端口 61440 空闲。',
+		'Port 61440 is occupied but the owning PID could not be identified.': '端口 61440 已被占用，但无法识别占用它的 PID。',
+		'Port 61440 was busy and got cleared automatically.': '端口 61440 曾被占用，现已自动清理。',
+		'Port 61440 is still occupied after automatic recovery.': '自动恢复后端口 61440 仍然被占用。',
+		'Program crashed': '程序崩溃',
+		'Check config format carefully, especially mac and boolean fields.': '请仔细检查配置格式，尤其是 mac 与布尔字段。',
+		'Port 61440 is occupied': '端口 61440 已被占用',
+		'Stop duplicate jludrcom processes before starting a foreground session.': '前台调试前请先停止重复的 jludrcom 进程。',
+		'Permission problem detected': '检测到权限问题',
+		'Verify executable permissions for init script, binary, and opkg scripts.': '请检查 init 脚本、二进制文件与 opkg 脚本的执行权限。',
+		'Authentication failed': '认证失败',
+		'Confirm username and password from the campus account.': '请确认校园账号的用户名和密码。',
+		'User does not exist': '用户不存在',
+		'Check the username format exported from the official client.': '请检查官方客户端导出的用户名格式。',
+		'Server did not respond': '服务器未响应',
+		'Verify server, host_ip, upstream interface, and whether 802.1X is required.': '请检查 server、host_ip、上游接口，以及是否需要 802.1X。',
+		'Service is crashing repeatedly': '服务持续崩溃',
+		'Run jludrcom in foreground and inspect the latest error before re-enabling respawn.': '请先前台运行 jludrcom，确认最新错误后再重新启用守护。',
+		'Keepalive failed': 'Keepalive 失败',
+		'Login may have succeeded but keepalive packets are not being acknowledged.': '登录可能已经成功，但保活包未得到确认。',
+		'Login succeeded recently': '最近登录成功',
+		'If Internet still fails, continue checking route, DNS, and NAT status.': '若仍无法联网，请继续检查路由、DNS 与 NAT 状态。',
+		'Service is not running': '服务未运行',
+		'Use Start or Restart after fixing the reported configuration or runtime issue.': '修复配置或运行时问题后，请使用启动或重启。',
+		'Port 61440 is still occupied': '端口 61440 仍被占用',
+		'The service now attempts automatic recovery before start, but another process still owns the socket.': '服务启动前会尝试自动恢复，但仍有其他进程占用该套接字。',
+		'Automatic port recovery failed': '自动端口恢复失败',
+		'Inspect the listed PIDs and stop the conflicting process manually if needed.': '请检查列出的 PID，并在必要时手动停止冲突进程。',
+		'Automatic port recovery succeeded': '自动端口恢复成功',
+		'The service cleared stale listeners before binding port 61440.': '服务在绑定 61440 端口前已清理陈旧监听器。',
+		'No route to authentication server': '到认证服务器没有路由',
+		'Check WAN link, upstream interface, and whether the configured server IP is reachable from the router.': '请检查 WAN 链路、上游接口，以及路由器是否可以到达配置的服务器 IP。',
+		'host_ip does not match the active route source': 'host_ip 与当前路由源地址不一致',
+		'Update host_ip to the source address chosen by the current route, or pin the route/interface first.': '请将 host_ip 改为当前路由选中的源地址，或先固定路由/接口。',
+		'Configuration is incomplete': '配置不完整',
+		'Fill in the missing required keys before restarting the service.': '请在重启服务前补齐必需键。',
+		'Configuration warning': '配置警告',
+		'Review the config editor helper text for recommended formatting.': '请参考配置编辑器下方提示，检查推荐格式。',
+		'server should be an IPv4 address.': 'server 应为 IPv4 地址。',
+		'host_ip should be an IPv4 address.': 'host_ip 应为 IPv4 地址。',
+		'mac should use dogcom format like 0xB025AA851014.': 'mac 应使用 dogcom 格式，例如 0xB025AA851014。',
+		'ror_version should be True or False.': 'ror_version 应为 True 或 False。',
+		'keepalive1_mod is recommended to improve compatibility.': '建议填写 keepalive1_mod 以提升兼容性。',
+		'Configuration uses an unsupported format; prefer dogcom-style key = \'value\' lines.': '配置格式不受支持；建议使用 dogcom 风格的 key = \'value\' 行。',
+		'Unsupported service action.': '不支持的服务操作。',
+		'Service script is missing or not executable.': '服务脚本不存在或不可执行。',
+		'Service command failed.': '服务命令执行失败。',
+		'Service action submitted.': '服务操作已提交。',
+		'POST is required.': '必须使用 POST 请求。',
+		'Request token mismatch.': '请求令牌不匹配。',
+		'Configuration saved. Service restarting (check status and logs below).': '配置已保存，服务正在重启（请查看下方状态和日志）。',
+		'Configuration saved, but restart failed. Review the status and logs panels below.': '配置已保存，但重启失败。请查看下方状态和日志面板。'
+	};
 	function byId(id) { return document.getElementById(id); }
-	function setText(id, value) { var node = byId(id); if (node) { node.textContent = value || '-'; } }
+	function formatText(template, vars) {
+		return String(template || '').replace(/\{(\w+)\}/g, function(match, key) {
+			return vars && vars[key] != null ? vars[key] : match;
+		});
+	}
+	function t(key, vars, fallback) {
+		var langMap = translations[currentLanguage] || translations.en;
+		var text = langMap[key] || translations.en[key] || fallback || key;
+		return formatText(text, vars);
+	}
+	function translateRawText(value) {
+		if (value == null || value === '') { return value; }
+		if (typeof value === 'object') {
+			if (value.key) { return t(value.key, null, value.text || ''); }
+			if (value.text) { return translateRawText(value.text); }
+		}
+		if (currentLanguage === 'en') { return value; }
+		return rawTextTranslations[String(value)] || value;
+	}
+	function translateList(items) {
+		var translated = [];
+		var i;
+		for (i = 0; i < (items || []).length; i++) {
+			translated.push(translateRawText(items[i]));
+		}
+		return translated;
+	}
+	function detectInitialLanguage() {
+		var saved = null;
+		try { saved = window.localStorage ? window.localStorage.getItem(LANGUAGE_STORAGE_KEY) : null; } catch (error) { saved = null; }
+		if (saved && translations[saved]) { return saved; }
+		return (navigator.language || '').toLowerCase().indexOf('zh') === 0 ? 'zh-CN' : 'en';
+	}
+	function persistLanguage(lang) {
+		try { if (window.localStorage) { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, lang); } } catch (error) {}
+	}
+	function updateAutoRefreshButton() {
+		var button = byId('jludrcom-toggle-refresh');
+		if (button) {
+			button.textContent = autoRefresh ? t('pause_auto_refresh') : t('resume_auto_refresh');
+		}
+	}
+	function applyStaticTranslations() {
+		var nodes = document.querySelectorAll('[data-i18n]');
+		var index;
+		for (index = 0; index < nodes.length; index++) {
+			var key = nodes[index].getAttribute('data-i18n');
+			if (key) { nodes[index].textContent = t(key); }
+		}
+		updateAutoRefreshButton();
+		if (document.documentElement) {
+			document.documentElement.lang = currentLanguage;
+		}
+		var selector = byId('jludrcom-language');
+		if (selector && selector.value !== currentLanguage) {
+			selector.value = currentLanguage;
+		}
+		var formMessage = byId('jludrcom-form-message');
+		if (formMessage) {
+			if (!formMessage.getAttribute('data-raw-message')) {
+				formMessage.setAttribute('data-raw-message', formMessage.textContent);
+			}
+			formMessage.textContent = translateRawText({
+				key: formMessage.getAttribute('data-message-key'),
+				text: formMessage.getAttribute('data-raw-message')
+			});
+		}
+		if (lastStatusData) {
+			renderStatus(lastStatusData);
+		}
+		if (lastLogsData) {
+			renderLogs(lastLogsData);
+		}
+	}
+	function setLanguage(lang) {
+		currentLanguage = translations[lang] ? lang : 'en';
+		persistLanguage(currentLanguage);
+		applyStaticTranslations();
+		refreshAll(true);
+	}
+	function setText(id, value) { var node = byId(id); if (node) { node.textContent = (value == null || value === '') ? '-' : value; } }
 	function setFeedback(message, state) { var node = byId('jludrcom-feedback'); if (node) { node.className = 'jludrcom-feedback ' + (state || 'is-info'); node.textContent = message; } }
 	function setBadge(node, text, stateClass) { if (node) { node.className = 'jludrcom-badge ' + stateClass; node.textContent = text; } }
 	function joinList(items, emptyText) { return (items && items.length) ? items.join(', ') : (emptyText || '-'); }
@@ -473,10 +1075,10 @@
 	}
 
 	function renderConfig(config) {
-		var missing = (config && config.missing_keys && config.missing_keys.length) ? config.missing_keys.join(', ') : 'None';
-		var warnings = (config && config.warnings && config.warnings.length) ? config.warnings.join(' | ') : 'None';
+		var missing = (config && config.missing_keys && config.missing_keys.length) ? config.missing_keys.join(', ') : t('none');
+		var warnings = (config && config.warnings && config.warnings.length) ? translateList(config.warnings).join(' | ') : t('none');
 		var valid = config && config.valid;
-		setBadge(byId('jludrcom-config-state'), valid ? 'Valid' : 'Needs Attention', valid ? 'is-running' : 'is-warning');
+		setBadge(byId('jludrcom-config-state'), valid ? t('valid') : t('needs_attention'), valid ? 'is-running' : 'is-warning');
 		setText('jludrcom-config-missing', missing);
 		setText('jludrcom-config-warnings', warnings);
 		setText('jludrcom-config-count', config ? String(config.parsed_keys || 0) + ' / ' + String(config.non_empty_lines || 0) : '-');
@@ -492,19 +1094,19 @@
 		if (!errors || !errors.length) {
 			var empty = document.createElement('li');
 			empty.className = 'jludrcom-empty';
-			empty.textContent = 'No obvious error signatures found in the latest status snapshot.';
+			empty.textContent = t('no_obvious_errors');
 			list.appendChild(empty);
-			setBadge(badge, 'Clear', 'is-running');
-			setText('jludrcom-error-title', 'No recent error detected');
+			setBadge(badge, t('clear'), 'is-running');
+			setText('jludrcom-error-title', t('no_recent_error'));
 			setText('jludrcom-error-line', '-');
-			setText('jludrcom-error-hint', 'Continue monitoring logs while testing authentication.');
+			setText('jludrcom-error-hint', t('continue_monitoring'));
 			return;
 		}
 		for (index = 0; index < errors.length; index++) {
 			var item = document.createElement('li');
 			var title = document.createElement('div');
 			title.className = 'jludrcom-error-title';
-			title.textContent = errors[index].title || 'Issue';
+			title.textContent = translateRawText({ key: errors[index].title_key, text: errors[index].title || t('issue') });
 			item.appendChild(title);
 			if (errors[index].line) {
 				var line = document.createElement('span');
@@ -515,19 +1117,19 @@
 			if (errors[index].hint) {
 				var hint = document.createElement('span');
 				hint.className = 'jludrcom-error-hint';
-				hint.textContent = errors[index].hint;
+				hint.textContent = translateRawText({ key: errors[index].hint_key, text: errors[index].hint });
 				item.appendChild(hint);
 			}
 			list.appendChild(item);
 		}
-		setBadge(badge, topError && topError.severity === 'critical' ? 'Critical' : (topError && topError.severity === 'warning' ? 'Warning' : 'Info'), topError && topError.severity === 'critical' ? 'is-critical' : (topError && topError.severity === 'warning' ? 'is-warning' : 'is-info'));
-		setText('jludrcom-error-title', topError.title || '-');
+		setBadge(badge, topError && topError.severity === 'critical' ? t('critical') : (topError && topError.severity === 'warning' ? t('warning') : t('info')), topError && topError.severity === 'critical' ? 'is-critical' : (topError && topError.severity === 'warning' ? 'is-warning' : 'is-info'));
+		setText('jludrcom-error-title', translateRawText({ key: topError.title_key, text: topError.title || '-' }));
 		setText('jludrcom-error-line', topError.line || '-');
-		setText('jludrcom-error-hint', topError.hint || '-');
+		setText('jludrcom-error-hint', translateRawText({ key: topError.hint_key, text: topError.hint || '-' }));
 	}
 
 	function renderNetwork(network) {
-		var stateText = 'Unknown';
+		var stateText = t('unknown');
 		var stateClass = 'is-info';
 		var bindLabel = '-';
 		var routeLabel = '-';
@@ -536,7 +1138,7 @@
 		var ownersLabel = '-';
 		var recoveryLabel = '-';
 		if (!network) {
-			setBadge(byId('jludrcom-network-state'), 'Unavailable', 'is-warning');
+			setBadge(byId('jludrcom-network-state'), t('unavailable'), 'is-warning');
 			setText('jludrcom-network-bind', bindLabel);
 			setText('jludrcom-network-route', routeLabel);
 			setText('jludrcom-network-host-ip', hostLabel);
@@ -547,27 +1149,27 @@
 		}
 
 		if (network.port_mode === 'blocked') {
-			stateText = 'Port Blocked';
+			stateText = t('port_blocked');
 			stateClass = 'is-critical';
 		} else if (network.challenge_code === 'authenticated' || network.challenge_code === 'received') {
-			stateText = 'Ready';
+			stateText = t('ready');
 			stateClass = 'is-running';
 		} else if (network.port_mode === 'listening') {
-			stateText = 'Listening';
+			stateText = t('listening');
 			stateClass = 'is-info';
 		} else if (network.port_mode === 'free') {
-			stateText = 'Idle';
+			stateText = t('idle');
 			stateClass = 'is-warning';
 		}
 
-		bindLabel = String(network.bind_port || '61440') + ' / ' + (network.port_mode || 'unknown');
-		routeLabel = network.route_line || ((network.interface || network.route_source_ip) ? [network.interface || 'unknown-iface', network.route_source_ip || 'no-src'].join(' · ') : 'No route detected');
-		hostLabel = (network.configured_host_ip || 'unset') + ' / ' + (network.route_source_ip || 'no-src');
-		challengeLabel = network.challenge_status || 'Idle';
+		bindLabel = String(network.bind_port || '61440') + ' / ' + translateRawText(network.port_mode || t('unknown'));
+		routeLabel = network.route_line || ((network.interface || network.route_source_ip) ? [network.interface || t('unknown_iface'), network.route_source_ip || t('no_src')].join(' · ') : t('route_not_checked'));
+		hostLabel = (network.configured_host_ip || t('unset')) + ' / ' + (network.route_source_ip || t('no_src'));
+		challengeLabel = translateRawText(network.challenge_status || t('idle'));
 		if (network.challenge_line) { challengeLabel += ' · ' + network.challenge_line; }
-		ownersLabel = joinList(network.port_owners, network.port_line || 'No listener');
+		ownersLabel = joinList(network.port_owners, network.port_line || t('no_listener'));
 		if (network.port_pids && network.port_pids.length) { ownersLabel += ' · pid ' + network.port_pids.join(', '); }
-		recoveryLabel = network.recovery_message || (network.auto_port_recovery ? 'Automatic recovery armed before service start.' : 'Disabled');
+		recoveryLabel = translateRawText(network.recovery_message) || (network.auto_port_recovery ? t('auto_recovery_armed') : t('disabled'));
 		if (network.recovery_time) { recoveryLabel += ' · ' + network.recovery_time; }
 
 		setBadge(byId('jludrcom-network-state'), stateText, stateClass);
@@ -580,20 +1182,22 @@
 	}
 
 	function renderStatus(data) {
-		setBadge(byId('jludrcom-service-state'), data.running ? 'Running' : 'Stopped', data.running ? 'is-running' : 'is-stopped');
+		lastStatusData = data;
+		setBadge(byId('jludrcom-service-state'), data.running ? t('running') : t('stopped'), data.running ? 'is-running' : 'is-stopped');
 		setText('jludrcom-service-pid', data.pid || 'N/A');
 		setText('jludrcom-updated-at', data.updated_at || '-');
 		setText('jludrcom-log-source', data.log_source || '-');
 		setText('jludrcom-log-source-text', data.log_source || '-');
-		setBadge(byId('jludrcom-service-enabled'), data.enabled ? 'Enabled' : 'Disabled', data.enabled ? 'is-running' : 'is-warning');
+		setBadge(byId('jludrcom-service-enabled'), data.enabled ? t('enabled') : t('disabled'), data.enabled ? 'is-running' : 'is-warning');
 		renderNetwork(data.network || null);
 		renderConfig(data.config || {});
 		renderErrors(data.errors || [], data.last_error || null);
 	}
 
 	function renderLogs(data) {
+		lastLogsData = data;
 		setText('jludrcom-log-source-text', data.log_source || '-');
-		byId('jludrcom-log-output').textContent = data.logs || 'No logs available yet.';
+		byId('jludrcom-log-output').textContent = data.logs || t('no_logs_yet');
 		if (data.errors) { renderErrors(data.errors, data.last_error || null); }
 	}
 
@@ -627,7 +1231,7 @@
 
 	function refreshAll(silent) {
 		if (refreshBusy) {
-			if (!silent) { setFeedback('Refresh already in progress.', 'is-pending'); }
+			if (!silent) { setFeedback(t('refresh_busy'), 'is-pending'); }
 			return;
 		}
 
@@ -638,13 +1242,13 @@
 				refreshBusy = false;
 				if (!silent) {
 					if (statusOk && logsOk) {
-						setFeedback('Status and logs refreshed successfully.', 'is-ok');
+						setFeedback(t('refresh_ok'), 'is-ok');
 					} else if (statusOk) {
-						setFeedback('Status refreshed, but logs update failed.', 'is-warning');
+						setFeedback(t('refresh_status_only'), 'is-warning');
 					} else if (logsOk) {
-						setFeedback('Logs refreshed, but status update failed.', 'is-warning');
+						setFeedback(t('refresh_logs_only'), 'is-warning');
 					} else {
-						setFeedback('Failed to refresh current status and logs.', 'is-error');
+						setFeedback(t('refresh_failed'), 'is-error');
 					}
 				}
 				scheduleRefresh();
@@ -652,17 +1256,24 @@
 		});
 	}
 
+	function translateAction(action) {
+		if (action === 'start') { return t('start_service'); }
+		if (action === 'restart') { return t('restart_service'); }
+		if (action === 'stop') { return t('stop_service'); }
+		return translateRawText(action);
+	}
+
 	function triggerService(action) {
 		clearRefreshTimer();
-		setFeedback('Submitting service action: ' + action + '...', 'is-pending');
+		setFeedback(t('submitting_service_action', { action: translateAction(action) }), 'is-pending');
 		setControlsDisabled(true);
 		request('POST', serviceUrl, { token: token, action: action }, function(ok, data) {
 			if (ok && data && data.ok) {
 				if (data.status) { renderStatus(data.status); }
-				setFeedback(data.message || 'Service action completed.', 'is-ok');
+				setFeedback(translateRawText({ key: data.message_key, text: data.message || t('service_action_done') }), 'is-ok');
 				window.setTimeout(function() { refreshAll(true); }, 1500);
 			} else {
-				setFeedback((data && data.error) ? data.error : 'Service action failed.', 'is-error');
+				setFeedback((data && (data.error || data.error_key)) ? translateRawText({ key: data.error_key, text: data.error || t('service_action_failed') }) : t('service_action_failed'), 'is-error');
 				scheduleRefresh(AUTO_REFRESH_INTERVAL);
 			}
 			setControlsDisabled(false);
@@ -676,15 +1287,19 @@
 			buttons[i].onclick = function() { triggerService(this.getAttribute('data-service-action')); };
 		}
 		byId('jludrcom-refresh-all').onclick = function() { refreshAll(false); };
+		var languageSelector = byId('jludrcom-language');
+		if (languageSelector) {
+			languageSelector.onchange = function() { setLanguage(this.value); };
+		}
 		byId('jludrcom-toggle-refresh').onclick = function() {
 			autoRefresh = !autoRefresh;
-			this.textContent = autoRefresh ? 'Pause Auto Refresh' : 'Resume Auto Refresh';
+			updateAutoRefreshButton();
 			if (autoRefresh) {
-				setFeedback(document.hidden ? 'Auto refresh will resume when the tab becomes visible.' : 'Auto refresh enabled.', 'is-ok');
+				setFeedback(document.hidden ? t('auto_refresh_resume_visible') : t('auto_refresh_enabled'), 'is-ok');
 				scheduleRefresh(1000);
 			} else {
 				clearRefreshTimer();
-				setFeedback('Auto refresh paused.', 'is-pending');
+				setFeedback(t('auto_refresh_paused'), 'is-pending');
 			}
 		};
 		if (document.addEventListener) {
@@ -692,15 +1307,17 @@
 				if (!autoRefresh) { return; }
 				if (document.hidden) {
 					clearRefreshTimer();
-					setFeedback('Auto refresh paused while this tab is hidden.', 'is-pending');
+					setFeedback(t('auto_refresh_hidden'), 'is-pending');
 				} else {
-					setFeedback('Auto refresh resumed.', 'is-ok');
+					setFeedback(t('auto_refresh_resumed'), 'is-ok');
 					refreshAll(true);
 				}
 			});
 		}
 	}
 
+	currentLanguage = detectInitialLanguage();
+	applyStaticTranslations();
 	bindActions();
 	refreshAll(false);
 })();
