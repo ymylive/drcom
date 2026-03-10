@@ -56,7 +56,7 @@ resolve_sdk_root() {
     return 0
   fi
 
-  local base_url sha256sums sdk_line sdk_sha256 sdk_url
+  local base_url sha256sums sdk_line sdk_sha256 sdk_file sdk_url
   base_url="https://downloads.openwrt.org/releases/${OPENWRT_RELEASE}/targets/${TARGET}/${SUBTARGET}/"
   sha256sums="$(curl --fail --location --silent --show-error "${base_url}sha256sums")"
   sdk_line="$(printf '%s\n' "$sha256sums" | grep -E "openwrt-sdk-${OPENWRT_RELEASE}-${TARGET}-${SUBTARGET}_.+\\.Linux-x86_64\\.tar\\.(zst|xz|gz)$" | head -n 1 || true)"
@@ -65,7 +65,9 @@ resolve_sdk_root() {
     exit 1
   fi
   sdk_sha256="${sdk_line%% *}"
-  sdk_url="${base_url}${sdk_line##* }"
+  sdk_file="${sdk_line##* }"
+  sdk_file="${sdk_file#\*}"
+  sdk_url="${base_url}${sdk_file}"
 
   local cache_dir archive_name archive_path extract_dir detected_root
   cache_dir="$WORK_ROOT/sdk-cache"
