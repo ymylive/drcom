@@ -138,31 +138,19 @@ jobs:
           merge-multiple: true
 
       - name: Publish release assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifacts: "dist/*.ipk,dist/*.sha256"
+          artifactErrorsFailBuild: true
+          body: |
+            Automated OpenWrt package release for ${{ github.ref_name }}
 
-          notes="$(cat <<EOF
-          Automated OpenWrt package release for ${GITHUB_REF_NAME}
-
-          - OpenWrt release: ${OPENWRT_RELEASE}
-          - Package: ${PACKAGE_NAME}
-          - Build route: official SDK toolchain + scripts/ipkg-build
-          - Assets: one .ipk and one .sha256 per pkgarch
-          EOF
-          )"
-
-          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
-            gh release edit "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes "${notes}"
-          else
-            gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --notes "${notes}"
-          fi
-
-          mapfile -t assets < <(find dist -type f \( -name '*.ipk' -o -name '*.sha256' \) | sort)
-          if [ "${#assets[@]}" -eq 0 ]; then
-            echo 'No release assets found.' >&2
-            exit 1
-          fi
-
-          gh release upload "${GITHUB_REF_NAME}" "${assets[@]}" --clobber
+            - OpenWrt release: ${{ env.OPENWRT_RELEASE }}
+            - Package: ${{ env.PACKAGE_NAME }}
+            - Build route: official SDK toolchain + scripts/ipkg-build
+            - Assets: one `.ipk` and one `.sha256` per pkgarch
+          name: ${{ github.ref_name }}
+          removeArtifacts: true
+          replacesArtifacts: true
+          tag: ${{ github.ref_name }}
