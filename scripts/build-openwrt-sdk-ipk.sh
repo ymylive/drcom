@@ -10,6 +10,22 @@ SDK_ROOT=""
 OUTPUT_DIR=""
 WORK_ROOT=""
 
+curl_retry() {
+  curl \
+    --fail \
+    --location \
+    --silent \
+    --show-error \
+    --retry 5 \
+    --retry-delay 3 \
+    --retry-all-errors \
+    "$@"
+}
+
+normalize_pkgarch() {
+  printf '%s' "$1" | tr '+' '_'
+}
+
 usage() {
   cat <<'EOF'
 Usage:
@@ -58,7 +74,7 @@ resolve_sdk_root() {
 
   local base_url sha256sums sdk_line sdk_sha256 sdk_file sdk_url
   base_url="https://downloads.openwrt.org/releases/${OPENWRT_RELEASE}/targets/${TARGET}/${SUBTARGET}/"
-  sha256sums="$(curl --fail --location --silent --show-error "${base_url}sha256sums")"
+  sha256sums="$(curl_retry "${base_url}sha256sums")"
   sdk_line="$(printf '%s\n' "$sha256sums" | grep -E "openwrt-sdk-${OPENWRT_RELEASE}-${TARGET}-${SUBTARGET}_.+\\.Linux-x86_64\\.tar\\.(zst|xz|gz)$" | head -n 1 || true)"
   if [[ -z "$sdk_line" ]]; then
     echo "Failed to discover SDK archive for ${TARGET}/${SUBTARGET} on OpenWrt ${OPENWRT_RELEASE}" >&2
@@ -76,7 +92,7 @@ resolve_sdk_root() {
   archive_path="$cache_dir/$archive_name"
 
   if [[ ! -f "$archive_path" ]]; then
-    curl --fail --location --silent --show-error "$sdk_url" --output "$archive_path"
+    curl_retry "$sdk_url" --output "$archive_path"
   fi
 
   echo "${sdk_sha256}  ${archive_path}" | sha256sum --check --status
@@ -134,9 +150,14 @@ if [[ -z "$SDK_PKGARCH" ]]; then
   exit 1
 fi
 
-if [[ -n "$PKGARCH_HINT" && "$PKGARCH_HINT" != "$SDK_PKGARCH" ]]; then
-  echo "pkgarch mismatch: expected $PKGARCH_HINT, got $SDK_PKGARCH" >&2
-  exit 1
+if [[ -n "$PKGARCH_HINT" ]]; then
+  if [[ "$(normalize_pkgarch "$PKGARCH_HINT")" != "$(normalize_pkgarch "$SDK_PKGARCH")" ]]; then
+    echo "pkgarch mismatch: expected $PKGARCH_HINT, got $SDK_PKGARCH" >&2
+    exit 1
+  fi
+  SDK_PKGARCH="$PKGARCH_HINT"
+else
+  SDK_PKGARCH="$(normalize_pkgarch "$SDK_PKGARCH")"
 fi
 
 CC="$(find "$TOOLCHAIN_DIR/bin" -maxdepth 1 -type f -name '*-gcc' | head -n 1)"
