@@ -23,7 +23,14 @@ curl_retry() {
 }
 
 normalize_pkgarch() {
-  printf '%s' "$1" | tr '+' '_'
+  local value
+  value="$(printf '%s' "$1" | tr '+' '_')"
+  case "$value" in
+    mips64_*_64|mips64el_*_64)
+      value="${value%_64}"
+      ;;
+  esac
+  printf '%s' "$value"
 }
 
 usage() {
@@ -121,6 +128,44 @@ read_pkg_value() {
   sed -n "s/^${key}:=//p" "$PACKAGE_ROOT/Makefile" | head -n 1
 }
 
+read_target_value() {
+  local key="$1"
+  local file value
+  for file in \
+    "$SDK_ROOT/target/linux/$TARGET/$SUBTARGET/target.mk" \
+    "$SDK_ROOT/target/linux/$TARGET/Makefile"
+  do
+    [[ -f "$file" ]] || continue
+    value="$(sed -n "s/^${key}:=//p" "$file" | head -n 1)"
+    if [[ -n "$value" ]]; then
+      printf '%s' "$value"
+      return 0
+    fi
+  done
+  return 1
+}
+
+resolve_target_flags() {
+  local target_arch cpu_type
+  target_arch="$(read_target_value ARCH || true)"
+  cpu_type="$(read_target_value CPU_TYPE || true)"
+
+  TARGET_CPPFLAGS="-I."
+  TARGET_CFLAGS="-std=gnu99 -Wno-unused-result"
+  TARGET_LDFLAGS=""
+
+  case "${target_arch}:${cpu_type}" in
+    mips64:mips64r2|mips64el:mips64r2)
+      TARGET_CFLAGS="$TARGET_CFLAGS -mips64r2 -mtune=mips64r2 -mabi=64 -mno-branch-likely"
+      TARGET_LDFLAGS="-mips64r2 -mabi=64 -mno-branch-likely"
+      ;;
+    mips64:octeonplus)
+      TARGET_CFLAGS="$TARGET_CFLAGS -march=octeon+ -mabi=64 -mno-branch-likely"
+      TARGET_LDFLAGS="-march=octeon+ -mabi=64 -mno-branch-likely"
+      ;;
+  esac
+}
+
 resolve_sdk_root
 
 PKG_NAME="$(read_pkg_value PKG_NAME)"
@@ -139,7 +184,7 @@ if [[ -z "$TOOLCHAIN_DIR" ]]; then
   exit 1
 fi
 
-SDK_PKGARCH="$(sed -n 's/^CONFIG_TARGET_ARCH_PACKAGES=\"\([^\"]*\)\"/\1/p' "$SDK_ROOT/.config" | head -n 1 || true)"
+SDK_PKGARCH="$(sed -n 's/^CONFIG_TARGET_ARCH_PACKAGES=\"\([^\"]*\)\"/\1/p' "$SDK_ROOT/.config" 2>/dev/null | head -n 1 || true)"
 if [[ -z "$SDK_PKGARCH" ]]; then
   SDK_PKGARCH="$(basename "$TOOLCHAIN_DIR")"
   SDK_PKGARCH="${SDK_PKGARCH#toolchain-}"
@@ -167,6 +212,7 @@ if [[ -z "$CC" ]]; then
 fi
 STRIP="${CC%-gcc}-strip"
 export STAGING_DIR="$TOOLCHAIN_DIR"
+resolve_target_flags
 
 BUILD_DIR="$WORK_ROOT/build-${TARGET}-${SUBTARGET}"
 SRC_BUILD_DIR="$BUILD_DIR/src"
@@ -180,8 +226,9 @@ make -C "$SRC_BUILD_DIR" clean >/dev/null 2>&1 || true
 make -C "$SRC_BUILD_DIR" \
   CC="$CC" \
   TARGET="jludrcom" \
-  CPPFLAGS="-I." \
-  CFLAGS="-std=gnu99 -Wno-unused-result" \
+  CPPFLAGS="$TARGET_CPPFLAGS" \
+  CFLAGS="$TARGET_CFLAGS" \
+  LDFLAGS="$TARGET_LDFLAGS" \
   >/dev/null
 
 if [[ -x "$STRIP" ]]; then
