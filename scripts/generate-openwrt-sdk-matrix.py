@@ -21,7 +21,7 @@ def fetch_bytes(url: str) -> bytes:
         request = urllib.request.Request(
             url,
             headers={
-                "User-Agent": "jludrcom-build-matrix/1.0",
+                "User-Agent": "drcom-build-matrix/1.0",
                 "Connection": "close",
             },
         )

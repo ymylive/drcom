@@ -169,7 +169,7 @@ static int test_accepts_legacy_quoted_config(void) {
         "ror_version=0\n"
         "keepalive1_mod=1\n"
         "bind_ip='0.0.0.0'\n"
-        "log='/tmp/jludrcom.log'\n"
+        "log='/tmp/drcom.log'\n"
         "eternal=1\n";
 
     memset(bind_ip, 0, sizeof(bind_ip));

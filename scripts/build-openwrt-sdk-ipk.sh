@@ -225,14 +225,14 @@ cp -a "$PACKAGE_ROOT/src/." "$SRC_BUILD_DIR/"
 make -C "$SRC_BUILD_DIR" clean >/dev/null 2>&1 || true
 make -C "$SRC_BUILD_DIR" \
   CC="$CC" \
-  TARGET="jludrcom" \
+  TARGET="drcom" \
   CPPFLAGS="$TARGET_CPPFLAGS" \
   CFLAGS="$TARGET_CFLAGS" \
   LDFLAGS="$TARGET_LDFLAGS" \
   >/dev/null
 
 if [[ -x "$STRIP" ]]; then
-  "$STRIP" "$SRC_BUILD_DIR/jludrcom" || true
+  "$STRIP" "$SRC_BUILD_DIR/drcom" || true
 fi
 
 mkdir -p \
@@ -240,21 +240,21 @@ mkdir -p \
   "$PKG_BUILD_DIR/etc" \
   "$PKG_BUILD_DIR/etc/init.d" \
   "$PKG_BUILD_DIR/usr/lib/lua/luci/controller" \
-  "$PKG_BUILD_DIR/usr/lib/lua/luci/view/jludrcom"
+  "$PKG_BUILD_DIR/usr/lib/lua/luci/view/drcom"
 
-cp "$SRC_BUILD_DIR/jludrcom" "$PKG_BUILD_DIR/usr/bin/jludrcom"
+cp "$SRC_BUILD_DIR/drcom" "$PKG_BUILD_DIR/usr/bin/drcom"
 cp "$PACKAGE_ROOT/files/etc/drcom.conf" "$PKG_BUILD_DIR/etc/drcom.conf"
-cp "$PACKAGE_ROOT/files/etc/init.d/jludrcom" "$PKG_BUILD_DIR/etc/init.d/jludrcom"
-cp "$PACKAGE_ROOT/files/usr/lib/lua/luci/controller/jludrcom.lua" "$PKG_BUILD_DIR/usr/lib/lua/luci/controller/jludrcom.lua"
-cp "$PACKAGE_ROOT/files/usr/lib/lua/luci/view/jludrcom/form.htm" "$PKG_BUILD_DIR/usr/lib/lua/luci/view/jludrcom/form.htm"
+cp "$PACKAGE_ROOT/files/etc/init.d/drcom" "$PKG_BUILD_DIR/etc/init.d/drcom"
+cp "$PACKAGE_ROOT/files/usr/lib/lua/luci/controller/drcom.lua" "$PKG_BUILD_DIR/usr/lib/lua/luci/controller/drcom.lua"
+cp "$PACKAGE_ROOT/files/usr/lib/lua/luci/view/drcom/form.htm" "$PKG_BUILD_DIR/usr/lib/lua/luci/view/drcom/form.htm"
 
 sed -i 's/\r$//' \
   "$PKG_BUILD_DIR/etc/drcom.conf" \
-  "$PKG_BUILD_DIR/etc/init.d/jludrcom" \
-  "$PKG_BUILD_DIR/usr/lib/lua/luci/controller/jludrcom.lua" \
-  "$PKG_BUILD_DIR/usr/lib/lua/luci/view/jludrcom/form.htm"
+  "$PKG_BUILD_DIR/etc/init.d/drcom" \
+  "$PKG_BUILD_DIR/usr/lib/lua/luci/controller/drcom.lua" \
+  "$PKG_BUILD_DIR/usr/lib/lua/luci/view/drcom/form.htm"
 
-chmod 0755 "$PKG_BUILD_DIR/usr/bin/jludrcom" "$PKG_BUILD_DIR/etc/init.d/jludrcom"
+chmod 0755 "$PKG_BUILD_DIR/usr/bin/drcom" "$PKG_BUILD_DIR/etc/init.d/drcom"
 
 INSTALLED_SIZE="$(( $(du -sk "$PKG_BUILD_DIR" | awk '{print $1}') * 1024 ))"
 
@@ -264,11 +264,11 @@ Version: $PKG_FULL_VERSION
 Depends: luci-base
 Section: net
 Category: Network
-Title: JLU DrCOM client with LuCI dashboard
+Title: OpenWrt DrCOM client service with LuCI dashboard
 Maintainer: ymylive
 Architecture: $SDK_PKGARCH
 Installed-Size: $INSTALLED_SIZE
-Description: JLU DrCOM client for OpenWrt routers with LuCI dashboard, live logs and automatic UDP 61440 port recovery.
+Description: General-purpose DrCOM client service for OpenWrt routers with LuCI dashboard, live logs and automatic UDP 61440 port recovery.
 EOF
 
 cat > "$PKG_BUILD_DIR/CONTROL/conffiles" <<'EOF'
@@ -281,8 +281,8 @@ cat > "$PKG_BUILD_DIR/CONTROL/postinst" <<'EOF'
 if [ -x /etc/init.d/uhttpd ]; then
   /etc/init.d/uhttpd reload >/dev/null 2>&1 || true
 fi
-if [ -x /etc/init.d/jludrcom ] && [ -x /usr/bin/jludrcom ]; then
-  /etc/init.d/jludrcom enable >/dev/null 2>&1 || true
+if [ -x /etc/init.d/drcom ] && [ -x /usr/bin/drcom ]; then
+  /etc/init.d/drcom enable >/dev/null 2>&1 || true
 fi
 exit 0
 EOF
@@ -290,8 +290,8 @@ EOF
 cat > "$PKG_BUILD_DIR/CONTROL/prerm" <<'EOF'
 #!/bin/sh
 [ -n "$IPKG_INSTROOT" ] && exit 0
-if [ -x /etc/init.d/jludrcom ]; then
-  /etc/init.d/jludrcom stop >/dev/null 2>&1 || true
+if [ -x /etc/init.d/drcom ]; then
+  /etc/init.d/drcom stop >/dev/null 2>&1 || true
 fi
 exit 0
 EOF

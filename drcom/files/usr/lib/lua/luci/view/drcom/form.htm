@@ -455,7 +455,7 @@
 	<div class="jludrcom-hero">
 		<div class="jludrcom-hero-head">
 			<div class="jludrcom-hero-copy">
-				<h2 data-i18n="page_title"><%:DrCOM for JLU%></h2>
+				<h2 data-i18n="page_title"><%:DrCOM%></h2>
 				<p data-i18n="page_subtitle"><%:Expanded operations dashboard with current status, error diagnosis, and live logs for faster troubleshooting.%></p>
 			</div>
 			<label class="jludrcom-locale" for="jludrcom-language">
@@ -612,7 +612,7 @@ keepalive1_mod=True</pre>
 	var currentLanguage = 'en';
 	var translations = {
 		en: {
-			page_title: 'DrCOM for JLU',
+			page_title: 'DrCOM',
 			page_subtitle: 'Expanded operations dashboard with current status, error diagnosis, and live logs for faster troubleshooting.',
 			language_label: 'Language',
 			language_option_en: 'English',
@@ -713,7 +713,7 @@ keepalive1_mod=True</pre>
 			'issue.programCrashed.title': 'Program crashed',
 			'issue.programCrashed.hint': 'Check config format carefully, especially mac and boolean fields.',
 			'issue.portOccupied.title': 'Port 61440 is occupied',
-			'issue.portOccupied.hint': 'Stop duplicate jludrcom processes before starting a foreground session.',
+			'issue.portOccupied.hint': 'Stop duplicate drcom processes before starting a foreground session.',
 			'issue.permissionProblem.title': 'Permission problem detected',
 			'issue.permissionProblem.hint': 'Verify executable permissions for init script, binary, and opkg scripts.',
 			'issue.authFailed.title': 'Authentication failed',
@@ -723,7 +723,7 @@ keepalive1_mod=True</pre>
 			'issue.serverNoResponse.title': 'Server did not respond',
 			'issue.serverNoResponse.hint': 'Verify server, host_ip, upstream interface, and whether 802.1X is required.',
 			'issue.crashLoop.title': 'Service is crashing repeatedly',
-			'issue.crashLoop.hint': 'Run jludrcom in foreground and inspect the latest error before re-enabling respawn.',
+			'issue.crashLoop.hint': 'Run drcom in foreground and inspect the latest error before re-enabling respawn.',
 			'issue.keepaliveFailed.title': 'Keepalive failed',
 			'issue.keepaliveFailed.hint': 'Login may have succeeded but keepalive packets are not being acknowledged.',
 			'issue.loginSucceeded.title': 'Login succeeded recently',
@@ -754,7 +754,7 @@ keepalive1_mod=True</pre>
 			'form.configSavedRestartFailed': 'Configuration saved, but restart failed. Review the status and logs panels below.'
 		},
 		'zh-CN': {
-			page_title: '吉林大学 DrCOM',
+			page_title: 'DrCOM 认证服务',
 			page_subtitle: '扩展运维面板，聚合当前状态、错误诊断与实时日志，加快排障。',
 			language_label: '语言',
 			language_option_en: 'English',
@@ -855,7 +855,7 @@ keepalive1_mod=True</pre>
 			'issue.programCrashed.title': '程序崩溃',
 			'issue.programCrashed.hint': '请仔细检查配置格式，尤其是 mac 与布尔字段。',
 			'issue.portOccupied.title': '端口 61440 已被占用',
-			'issue.portOccupied.hint': '前台调试前请先停止重复的 jludrcom 进程。',
+			'issue.portOccupied.hint': '前台调试前请先停止重复的 drcom 进程。',
 			'issue.permissionProblem.title': '检测到权限问题',
 			'issue.permissionProblem.hint': '请检查 init 脚本、二进制文件与 opkg 脚本的执行权限。',
 			'issue.authFailed.title': '认证失败',
@@ -865,7 +865,7 @@ keepalive1_mod=True</pre>
 			'issue.serverNoResponse.title': '服务器未响应',
 			'issue.serverNoResponse.hint': '请检查 server、host_ip、上游接口，以及是否需要 802.1X。',
 			'issue.crashLoop.title': '服务持续崩溃',
-			'issue.crashLoop.hint': '请先前台运行 jludrcom，确认最新错误后再重新启用守护。',
+			'issue.crashLoop.hint': '请先前台运行 drcom，确认最新错误后再重新启用守护。',
 			'issue.keepaliveFailed.title': 'Keepalive 失败',
 			'issue.keepaliveFailed.hint': '登录可能已经成功，但保活包未得到确认。',
 			'issue.loginSucceeded.title': '最近登录成功',
@@ -912,7 +912,7 @@ keepalive1_mod=True</pre>
 		'Program crashed': '程序崩溃',
 		'Check config format carefully, especially mac and boolean fields.': '请仔细检查配置格式，尤其是 mac 与布尔字段。',
 		'Port 61440 is occupied': '端口 61440 已被占用',
-		'Stop duplicate jludrcom processes before starting a foreground session.': '前台调试前请先停止重复的 jludrcom 进程。',
+		'Stop duplicate drcom processes before starting a foreground session.': '前台调试前请先停止重复的 drcom 进程。',
 		'Permission problem detected': '检测到权限问题',
 		'Verify executable permissions for init script, binary, and opkg scripts.': '请检查 init 脚本、二进制文件与 opkg 脚本的执行权限。',
 		'Authentication failed': '认证失败',
@@ -922,7 +922,7 @@ keepalive1_mod=True</pre>
 		'Server did not respond': '服务器未响应',
 		'Verify server, host_ip, upstream interface, and whether 802.1X is required.': '请检查 server、host_ip、上游接口，以及是否需要 802.1X。',
 		'Service is crashing repeatedly': '服务持续崩溃',
-		'Run jludrcom in foreground and inspect the latest error before re-enabling respawn.': '请先前台运行 jludrcom，确认最新错误后再重新启用守护。',
+		'Run drcom in foreground and inspect the latest error before re-enabling respawn.': '请先前台运行 drcom，确认最新错误后再重新启用守护。',
 		'Keepalive failed': 'Keepalive 失败',
 		'Login may have succeeded but keepalive packets are not being acknowledged.': '登录可能已经成功，但保活包未得到确认。',
 		'Login succeeded recently': '最近登录成功',

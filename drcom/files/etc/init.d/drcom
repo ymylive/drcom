@@ -4,9 +4,9 @@ START=90
 STOP=10
 
 CONF_PATH="/etc/drcom.conf"
-LOG_PATH="/tmp/jludrcom.log"
-PORT_STATE_PATH="/tmp/jludrcom-port-state"
-SERVICE_BIN="/usr/bin/jludrcom"
+LOG_PATH="/tmp/drcom.log"
+PORT_STATE_PATH="/tmp/drcom-port-state"
+SERVICE_BIN="/usr/bin/drcom"
 BIND_PORT="61440"
 
 timestamp() {
@@ -14,7 +14,7 @@ timestamp() {
 }
 
 log_runtime() {
-	echo "$(timestamp) [jludrcom-init] $*" >> "$LOG_PATH"
+	echo "$(timestamp) [drcom-init] $*" >> "$LOG_PATH"
 }
 
 to_csv() {

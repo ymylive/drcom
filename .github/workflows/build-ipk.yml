@@ -11,14 +11,14 @@ on:
       - '.gitignore'
       - 'README.md'
       - 'scripts/**'
-      - 'jludrcom/**'
+      - 'drcom/**'
   pull_request:
     paths:
       - '.github/workflows/build-ipk.yml'
       - '.gitignore'
       - 'README.md'
       - 'scripts/**'
-      - 'jludrcom/**'
+      - 'drcom/**'
   workflow_dispatch:
 
 permissions:
@@ -29,7 +29,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PACKAGE_NAME: jludrcom
+  PACKAGE_NAME: drcom
   OPENWRT_RELEASE: 24.10.5
 
 jobs:
@@ -48,13 +48,13 @@ jobs:
           bash -n scripts/build-openwrt-sdk-ipk.sh
 
       - name: Validate LuCI controller syntax
-        run: npx --yes luaparse jludrcom/files/usr/lib/lua/luci/controller/jludrcom.lua > /dev/null
+        run: npx --yes luaparse drcom/files/usr/lib/lua/luci/controller/drcom.lua > /dev/null
 
       - name: Validate LuCI inline script syntax
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          html = Path('jludrcom/files/usr/lib/lua/luci/view/jludrcom/form.htm').read_text(encoding='utf-8')
+          html = Path('drcom/files/usr/lib/lua/luci/view/drcom/form.htm').read_text(encoding='utf-8')
           marker = '<script type="text/javascript">'
           start = html.index(marker) + len(marker)
           end = html.index('</script>', start)
@@ -63,7 +63,7 @@ jobs:
           node --check .tmp-luci-form.js
 
       - name: Run parser smoke test
-        run: make -C jludrcom/src test-parser
+        run: make -C drcom/src test-parser
 
   plan:
     name: plan-matrix
@@ -107,7 +107,7 @@ jobs:
       - name: Build package
         run: |
           bash scripts/build-openwrt-sdk-ipk.sh \
-            --package-root "${GITHUB_WORKSPACE}/jludrcom" \
+            --package-root "${GITHUB_WORKSPACE}/drcom" \
             --release "${OPENWRT_RELEASE}" \
             --target "${{ matrix.target }}" \
             --subtarget "${{ matrix.subtarget }}" \
@@ -134,7 +134,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: dist
-          pattern: jludrcom-*
+          pattern: drcom-*
           merge-multiple: true
 
       - name: Publish release assets

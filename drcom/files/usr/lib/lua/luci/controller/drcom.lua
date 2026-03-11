@@ -1,11 +1,11 @@
-module("luci.controller.jludrcom", package.seeall)
+module("luci.controller.drcom", package.seeall)
 
 local CONF_PATH = "/etc/drcom.conf"
-local INIT_PATH = "/etc/init.d/jludrcom"
-local LOG_PATH = "/tmp/jludrcom.log"
-local SERVICE_NAME = "jludrcom"
+local INIT_PATH = "/etc/init.d/drcom"
+local LOG_PATH = "/tmp/drcom.log"
+local SERVICE_NAME = "drcom"
 local BIND_PORT = "61440"
-local PORT_STATE_PATH = "/tmp/jludrcom-port-state"
+local PORT_STATE_PATH = "/tmp/drcom-port-state"
 local SNAPSHOT_CACHE_TTL = 3
 local snapshot_cache = { full = nil, created_at = 0 }
 local i18n = require "luci.i18n"
@@ -23,9 +23,9 @@ end
 
 local function translate(text)
 	if i18n.load then
-		i18n.load("jludrcom")
+		i18n.load("drcom")
 	elseif i18n.loadc then
-		i18n.loadc("jludrcom")
+		i18n.loadc("drcom")
 	end
 
 	return i18n.translate(text)
@@ -199,7 +199,7 @@ local function read_log_tail(limit)
 	end
 
 	return {
-		text = shell_exec("logread | grep -E 'jludrcom|dogcom|EAP|drcom|procd' | tail -n " .. limit),
+		text = shell_exec("logread | grep -E 'drcom|dogcom|EAP|procd' | tail -n " .. limit),
 		source = "logread"
 	}
 end
@@ -425,7 +425,7 @@ local function extract_issues(log_text, config_state, running, network_state)
 		if line:match("Segmentation fault") then
 			append_issue(issues, seen, "critical", "issue.programCrashed.title", "Program crashed", line, "issue.programCrashed.hint", "Check config format carefully, especially mac and boolean fields.")
 		elseif line:match("Failed to bind socket") or line:match("Address in use") then
-			append_issue(issues, seen, "warning", "issue.portOccupied.title", "Port 61440 is occupied", line, "issue.portOccupied.hint", "Stop duplicate jludrcom processes before starting a foreground session.")
+			append_issue(issues, seen, "warning", "issue.portOccupied.title", "Port 61440 is occupied", line, "issue.portOccupied.hint", "Stop duplicate drcom processes before starting a foreground session.")
 		elseif line:match("Permission denied") then
 			append_issue(issues, seen, "critical", "issue.permissionProblem.title", "Permission problem detected", line, "issue.permissionProblem.hint", "Verify executable permissions for init script, binary, and opkg scripts.")
 		elseif line:match("Server forced this account offline") or line:match("Retrying in %d+ seconds") then
@@ -437,7 +437,7 @@ local function extract_issues(log_text, config_state, running, network_state)
 		elseif line:match("Not server in range") or line:match("Failed to recv data") then
 			append_issue(issues, seen, "warning", "issue.serverNoResponse.title", "Server did not respond", line, "issue.serverNoResponse.hint", "Verify server, host_ip, upstream interface, and whether 802.1X is required.")
 		elseif line:match("crash loop") then
-			append_issue(issues, seen, "critical", "issue.crashLoop.title", "Service is crashing repeatedly", line, "issue.crashLoop.hint", "Run jludrcom in foreground and inspect the latest error before re-enabling respawn.")
+			append_issue(issues, seen, "critical", "issue.crashLoop.title", "Service is crashing repeatedly", line, "issue.crashLoop.hint", "Run drcom in foreground and inspect the latest error before re-enabling respawn.")
 		elseif line:match("Failed to keep in touch") then
 			append_issue(issues, seen, "warning", "issue.keepaliveFailed.title", "Keepalive failed", line, "issue.keepaliveFailed.hint", "Login may have succeeded but keepalive packets are not being acknowledged.")
 		elseif line:match("Login success") then
@@ -545,7 +545,7 @@ local function build_snapshot(include_logs, force_refresh)
 
 	local pid = get_pid()
 	local running = pid ~= ""
-	local enabled = shell_ok("test -L /etc/rc.d/S90jludrcom")
+	local enabled = shell_ok("test -L /etc/rc.d/S90drcom")
 	local conf_text = fs.readfile(CONF_PATH) or ""
 	local conf = parse_config(conf_text)
 	local config_state = validate_config(conf)
@@ -616,13 +616,13 @@ function index()
 	local fs = require "nixio.fs"
 
 	if fs.access(CONF_PATH) then
-		local page = entry({"admin", "services", "jludrcom"}, call("render_form"), translate("DrCOM for JLU"), 10)
-		page.i18n = "jludrcom"
+		local page = entry({"admin", "services", "drcom"}, call("render_form"), translate("DrCOM"), 10)
+		page.i18n = "drcom"
 		page.dependent = true
 
-		entry({"admin", "services", "jludrcom", "status"}, call("status_json")).leaf = true
-		entry({"admin", "services", "jludrcom", "logs"}, call("logs_json")).leaf = true
-		entry({"admin", "services", "jludrcom", "service"}, call("service_action")).leaf = true
+		entry({"admin", "services", "drcom", "status"}, call("status_json")).leaf = true
+		entry({"admin", "services", "drcom", "logs"}, call("logs_json")).leaf = true
+		entry({"admin", "services", "drcom", "service"}, call("service_action")).leaf = true
 	end
 end
 
@@ -678,9 +678,9 @@ function render_form()
 	local sys = require "luci.sys"
 	local disp = require "luci.dispatcher"
 	local token = (disp.context and disp.context.authtoken) or ""
-	local status_url = disp.build_url("admin", "services", "jludrcom", "status")
-	local logs_url = disp.build_url("admin", "services", "jludrcom", "logs")
-	local service_url = disp.build_url("admin", "services", "jludrcom", "service")
+	local status_url = disp.build_url("admin", "services", "drcom", "status")
+	local logs_url = disp.build_url("admin", "services", "drcom", "logs")
+	local service_url = disp.build_url("admin", "services", "drcom", "service")
 
 	local message
 	local message_key
@@ -721,7 +721,7 @@ function render_form()
 
 	local snapshot = build_snapshot(true, true)
 
-	tpl.render("jludrcom/form", {
+	tpl.render("drcom/form", {
 		token = token,
 		conf = body,
 		message = message,
