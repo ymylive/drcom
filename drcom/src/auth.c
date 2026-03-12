@@ -25,15 +25,73 @@ typedef int socklen_t;
 
 #define BIND_PORT 61440
 #define DEST_PORT 61440
+#define SHORT_GENERIC_RETRY_DELAY_SECONDS 3
+#define DEFAULT_LOGIN_RETRY_DELAY_SECONDS 60
+#define INITIAL_BOOT_LOGIN_DELAY_SECONDS 300
 
-static int login_retry_delay_seconds = 3;
+static int login_retry_delay_seconds = DEFAULT_LOGIN_RETRY_DELAY_SECONDS;
 
 static void reset_login_retry_delay(void) {
-    login_retry_delay_seconds = 3;
+    login_retry_delay_seconds = DEFAULT_LOGIN_RETRY_DELAY_SECONDS;
 }
 
 static int current_login_retry_delay(void) {
-    return login_retry_delay_seconds > 0 ? login_retry_delay_seconds : 3;
+    return login_retry_delay_seconds > 0 ? login_retry_delay_seconds : DEFAULT_LOGIN_RETRY_DELAY_SECONDS;
+}
+
+static void set_login_retry_delay(int seconds) {
+    if (seconds <= 0) {
+        seconds = DEFAULT_LOGIN_RETRY_DELAY_SECONDS;
+    }
+    login_retry_delay_seconds = seconds;
+}
+
+static int read_system_uptime_seconds(void) {
+#ifdef WIN32
+    return 0;
+#else
+    FILE *uptime_file = fopen("/proc/uptime", "r");
+    double uptime_seconds = 0.0;
+
+    if (uptime_file == NULL) {
+        return 0;
+    }
+
+    if (fscanf(uptime_file, "%lf", &uptime_seconds) != 1) {
+        fclose(uptime_file);
+        return 0;
+    }
+
+    fclose(uptime_file);
+
+    if (uptime_seconds < 0.0) {
+        return 0;
+    }
+
+    return (int)uptime_seconds;
+#endif
+}
+
+static void maybe_delay_initial_login(void) {
+    int uptime_seconds = read_system_uptime_seconds();
+    int wait_seconds;
+    char wait_msg[160];
+
+    if (uptime_seconds <= 0 || uptime_seconds >= INITIAL_BOOT_LOGIN_DELAY_SECONDS) {
+        return;
+    }
+
+    wait_seconds = INITIAL_BOOT_LOGIN_DELAY_SECONDS - uptime_seconds;
+    snprintf(wait_msg,
+             sizeof(wait_msg),
+             "[Tips] Initial boot grace period is active. Delaying first login attempt for %d seconds after system startup.",
+             wait_seconds);
+    printf("%s\n", wait_msg);
+    if (logging_flag) {
+        logging(wait_msg, NULL, 0);
+    }
+
+    sleep(wait_seconds);
 }
 
 static int extract_retry_after_seconds(const unsigned char *packet, int packet_length) {
@@ -358,7 +416,13 @@ int dhcp_login(int sockfd, struct sockaddr_in addr, unsigned char seed[], unsign
                     strcpy(err_msg, "[Tips] The server is busy, please log back in again.");
                     break;
                 case WRONG_PASS:
-                    strcpy(err_msg, "[Tips] Account and password not match.");
+                    if (recv_length <= 5) {
+                        strcpy(err_msg, "[Tips] Server returned a short generic credential rejection. This is usually a temporary template-side rejection rather than a confirmed password error. Local retry is 3 seconds so the client can probe the alternate login template quickly.");
+                        set_login_retry_delay(SHORT_GENERIC_RETRY_DELAY_SECONDS);
+                    } else {
+                        strcpy(err_msg, "[Tips] Account and password not match.");
+                        set_login_retry_delay(DEFAULT_LOGIN_RETRY_DELAY_SECONDS);
+                    }
                     break;
                 case NOT_ENOUGH:
                     strcpy(err_msg, "[Tips] The cumulative time or traffic for this account has exceeded the limit.");
@@ -377,10 +441,11 @@ int dhcp_login(int sockfd, struct sockaddr_in addr, unsigned char seed[], unsign
                     break;
                 case UPDATE_CLIENT:
                     if (retry_after_seconds > 0) {
-                        snprintf(err_msg, sizeof(err_msg), "[Tips] Server forced this account offline and started a cooldown. Retry after %d seconds.", retry_after_seconds);
-                        login_retry_delay_seconds = retry_after_seconds;
+                        snprintf(err_msg, sizeof(err_msg), "[Tips] Server forced this account offline and reported a cooldown of %d seconds. Local retry remains fixed at 60 seconds.", retry_after_seconds);
+                        set_login_retry_delay(DEFAULT_LOGIN_RETRY_DELAY_SECONDS);
                     } else {
-                        strcpy(err_msg, "[Tips] The server rejected the current client signature/version.");
+                        strcpy(err_msg, "[Tips] The server rejected the current client signature/version. Local retry remains fixed at 60 seconds.");
+                        set_login_retry_delay(DEFAULT_LOGIN_RETRY_DELAY_SECONDS);
                     }
                     break;
                 case NOT_ON_THIS_IP_MAC:
@@ -391,6 +456,7 @@ int dhcp_login(int sockfd, struct sockaddr_in addr, unsigned char seed[], unsign
                     break;
                 default:
                     strcpy(err_msg, "[Tips] Unknown error number.");
+                    set_login_retry_delay(DEFAULT_LOGIN_RETRY_DELAY_SECONDS);
                     break;
             }
             printf("%s\n", err_msg);
@@ -655,6 +721,8 @@ int dogcom(int try_times) {
         return 1;
     }
 
+    maybe_delay_initial_login();
+
     // start dogcoming
     if (strcmp(mode, "dhcp") == 0) {
         int login_failed_attempts = 0;
@@ -674,12 +742,22 @@ int dogcom(int try_times) {
             } else {
                 usleep(200000);  // 0.2 sec
                 if (login_failed_attempts > 2) {
-                    try_JLUversion = 1;
+                    try_JLUversion = login_failed_attempts % 2;
+                    if (!try_JLUversion) {
+                        printf("[Tips] Switching back to the standard Windows login template for this retry.\n");
+                        if (logging_flag) {
+                            logging("[Tips] Switching back to the standard Windows login template for this retry.", NULL, 0);
+                        }
+                    }
+                } else {
+                    try_JLUversion = 0;
                 }
                 if (!dhcp_login(sockfd, dest_addr, seed, auth_information, try_JLUversion)) {
                     int keepalive_counter = 0;
                     int keepalive_try_counter = 0;
                     int first = 1;
+                    login_failed_attempts = 0;
+                    reset_login_retry_delay();
                     while (1) {
                         if (!keepalive_1(sockfd, dest_addr, seed, auth_information)) {
                             usleep(200000);  // 0.2 sec

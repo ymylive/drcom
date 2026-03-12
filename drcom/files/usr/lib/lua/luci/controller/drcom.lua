@@ -38,6 +38,10 @@ local function localized_message(key, text)
 	}
 end
 
+local function append_value(items, value)
+	items[#items + 1] = value
+end
+
 local function trim(value)
 	if value == nil then
 		return ""
@@ -57,7 +61,7 @@ local function split_lines(text)
 	end
 	for line in normalized:gmatch("(.-)\n") do
 		if not (line == "" and #lines > 0 and lines[#lines] == "") then
-			table.insert(lines, line)
+			append_value(lines, line)
 		end
 	end
 	return lines
@@ -141,12 +145,12 @@ local function validate_config(conf)
 	local missing_keys = {}
 	local warnings = {}
 	local function add_warning(key, text)
-		table.insert(warnings, localized_message(key, text))
+		append_value(warnings, localized_message(key, text))
 	end
 
 	for _, key in ipairs(required_keys) do
 		if trim(conf.keys[key]) == "" then
-			table.insert(missing_keys, key)
+			append_value(missing_keys, key)
 		end
 	end
 
@@ -211,13 +215,13 @@ local function append_unique(items, seen, value)
 	end
 
 	seen[value] = true
-	table.insert(items, value)
+	append_value(items, value)
 end
 
 local function split_csv(value)
 	local items = {}
 	for item in tostring(value or ""):gmatch("([^,]+)") do
-		table.insert(items, trim(item))
+		append_value(items, trim(item))
 	end
 	return items
 end
@@ -309,6 +313,8 @@ local function detect_challenge(log_text)
 		if line ~= "" then
 			if line:match("Login success") then
 				return { code = "authenticated", status = translate("Authenticated"), line = line }
+			elseif line:match("Initial boot grace period is active") or line:match("Delaying first login attempt") then
+				return { code = "waiting", status = translate("Waiting"), line = line }
 			elseif line:match("%[Challenge recv%]") then
 				return { code = "received", status = translate("Received"), line = line }
 			elseif line:match("Failed to recv data") then
@@ -404,7 +410,7 @@ local function append_issue(issues, seen, severity, title_key, title_text, line,
 	end
 
 	seen[dedupe_key] = true
-	table.insert(issues, {
+	append_value(issues, {
 		severity = severity,
 		title_key = title_key,
 		title = translate(title_text),
@@ -428,8 +434,16 @@ local function extract_issues(log_text, config_state, running, network_state)
 			append_issue(issues, seen, "warning", "issue.portOccupied.title", "Port 61440 is occupied", line, "issue.portOccupied.hint", "Stop duplicate drcom processes before starting a foreground session.")
 		elseif line:match("Permission denied") then
 			append_issue(issues, seen, "critical", "issue.permissionProblem.title", "Permission problem detected", line, "issue.permissionProblem.hint", "Verify executable permissions for init script, binary, and opkg scripts.")
-		elseif line:match("Server forced this account offline") or line:match("Retrying in %d+ seconds") then
+		elseif line:match("Initial boot grace period is active") then
+			append_issue(issues, seen, "info", nil, "Startup login delay is active", line, nil, "The service delays the first login for 5 minutes after boot to avoid campus-side temporary login blocks.")
+		elseif line:match("Server forced this account offline") then
 			append_issue(issues, seen, "warning", nil, "Server cooldown is active", line, nil, "The campus server temporarily blocks re-login after a forced logout. Wait for the reported cooldown before retrying.")
+		elseif line:match("short generic credential rejection") then
+			append_issue(issues, seen, "warning", nil, "Campus server temporarily rejected login", line, nil, "This short rejection is usually a temporary campus-side pause or cooldown, not a confirmed username/password error.")
+		elseif line:match("The server rejected the current client signature/version") then
+			append_issue(issues, seen, "warning", nil, "Client signature or version was rejected", line, nil, "The campus server rejected the current client signature. Wait before retrying and verify the exported parameters if this persists.")
+		elseif line:match("Retrying in %d+ seconds") then
+			append_issue(issues, seen, "info", nil, "A delayed retry is scheduled", line, nil, "The next login attempt is intentionally deferred. Check the preceding log line for the exact reason.")
 		elseif line:match("Password error") or line:match("Account and password not match") then
 			append_issue(issues, seen, "critical", "issue.authFailed.title", "Authentication failed", line, "issue.authFailed.hint", "Confirm username and password from the campus account.")
 		elseif line:match("No this user") then
