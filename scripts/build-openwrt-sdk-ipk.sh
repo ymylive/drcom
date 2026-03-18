@@ -9,6 +9,9 @@ PKGARCH_HINT=""
 SDK_ROOT=""
 OUTPUT_DIR=""
 WORK_ROOT=""
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+OUTPUT_PKG_NAME="${OUTPUT_PKG_NAME:-drcom_openwrt}"
+SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-1773321366}"
 
 curl_retry() {
   curl \
@@ -168,12 +171,11 @@ resolve_target_flags() {
 
 resolve_sdk_root
 
-PKG_NAME="$(read_pkg_value PKG_NAME)"
 PKG_VERSION="$(read_pkg_value PKG_VERSION)"
 PKG_RELEASE="$(read_pkg_value PKG_RELEASE)"
 PKG_FULL_VERSION="${PKG_VERSION}-${PKG_RELEASE}"
 
-if [[ -z "$PKG_NAME" || -z "$PKG_VERSION" || -z "$PKG_RELEASE" ]]; then
+if [[ -z "$PKG_VERSION" || -z "$PKG_RELEASE" ]]; then
   echo "Failed to parse package metadata from Makefile." >&2
   exit 1
 fi
@@ -216,10 +218,11 @@ resolve_target_flags
 
 BUILD_DIR="$WORK_ROOT/build-${TARGET}-${SUBTARGET}"
 SRC_BUILD_DIR="$BUILD_DIR/src"
-PKG_BUILD_DIR="$BUILD_DIR/pkg"
+STAGE_DIR="$BUILD_DIR/stage"
+CONTROL_DIR="$BUILD_DIR/control"
 
 rm -rf "$BUILD_DIR"
-mkdir -p "$SRC_BUILD_DIR" "$PKG_BUILD_DIR/CONTROL"
+mkdir -p "$SRC_BUILD_DIR" "$STAGE_DIR" "$CONTROL_DIR"
 cp -a "$PACKAGE_ROOT/src/." "$SRC_BUILD_DIR/"
 
 make -C "$SRC_BUILD_DIR" clean >/dev/null 2>&1 || true
@@ -236,75 +239,123 @@ if [[ -x "$STRIP" ]]; then
 fi
 
 mkdir -p \
-  "$PKG_BUILD_DIR/usr/bin" \
-  "$PKG_BUILD_DIR/etc" \
-  "$PKG_BUILD_DIR/etc/init.d" \
-  "$PKG_BUILD_DIR/usr/lib/lua/luci/controller" \
-  "$PKG_BUILD_DIR/usr/lib/lua/luci/view/drcom"
+  "$STAGE_DIR/usr/bin" \
+  "$STAGE_DIR/etc" \
+  "$STAGE_DIR/etc/init.d" \
+  "$STAGE_DIR/usr/lib/lua/luci/controller" \
+  "$STAGE_DIR/usr/lib/lua/luci/view/$OUTPUT_PKG_NAME"
 
-cp "$SRC_BUILD_DIR/drcom" "$PKG_BUILD_DIR/usr/bin/drcom"
-cp "$PACKAGE_ROOT/files/etc/drcom.conf" "$PKG_BUILD_DIR/etc/drcom.conf"
-cp "$PACKAGE_ROOT/files/etc/init.d/drcom" "$PKG_BUILD_DIR/etc/init.d/drcom"
-cp "$PACKAGE_ROOT/files/usr/lib/lua/luci/controller/drcom.lua" "$PKG_BUILD_DIR/usr/lib/lua/luci/controller/drcom.lua"
-cp "$PACKAGE_ROOT/files/usr/lib/lua/luci/view/drcom/form.htm" "$PKG_BUILD_DIR/usr/lib/lua/luci/view/drcom/form.htm"
+cp "$SRC_BUILD_DIR/drcom" "$STAGE_DIR/usr/bin/$OUTPUT_PKG_NAME"
+cp "$PACKAGE_ROOT/files/etc/drcom.conf" "$STAGE_DIR/etc/drcom.conf"
+cp "$PACKAGE_ROOT/files/etc/init.d/drcom" "$STAGE_DIR/etc/init.d/$OUTPUT_PKG_NAME"
+cp "$PACKAGE_ROOT/files/usr/lib/lua/luci/controller/drcom.lua" "$STAGE_DIR/usr/lib/lua/luci/controller/$OUTPUT_PKG_NAME.lua"
+cp "$PACKAGE_ROOT/files/usr/lib/lua/luci/view/drcom/form.htm" "$STAGE_DIR/usr/lib/lua/luci/view/$OUTPUT_PKG_NAME/form.htm"
 
 sed -i 's/\r$//' \
-  "$PKG_BUILD_DIR/etc/drcom.conf" \
-  "$PKG_BUILD_DIR/etc/init.d/drcom" \
-  "$PKG_BUILD_DIR/usr/lib/lua/luci/controller/drcom.lua" \
-  "$PKG_BUILD_DIR/usr/lib/lua/luci/view/drcom/form.htm"
+  "$STAGE_DIR/etc/drcom.conf" \
+  "$STAGE_DIR/etc/init.d/$OUTPUT_PKG_NAME" \
+  "$STAGE_DIR/usr/lib/lua/luci/controller/$OUTPUT_PKG_NAME.lua" \
+  "$STAGE_DIR/usr/lib/lua/luci/view/$OUTPUT_PKG_NAME/form.htm"
 
-chmod 0755 "$PKG_BUILD_DIR/usr/bin/drcom" "$PKG_BUILD_DIR/etc/init.d/drcom"
+python3 - "$STAGE_DIR/etc/init.d/$OUTPUT_PKG_NAME" "$STAGE_DIR/usr/lib/lua/luci/controller/$OUTPUT_PKG_NAME.lua" "$OUTPUT_PKG_NAME" <<'PY'
+from pathlib import Path
+import sys
 
-INSTALLED_SIZE="$(( $(du -sk "$PKG_BUILD_DIR" | awk '{print $1}') * 1024 ))"
+init_path = Path(sys.argv[1])
+controller_path = Path(sys.argv[2])
+package_name = sys.argv[3]
 
-cat > "$PKG_BUILD_DIR/CONTROL/control" <<EOF
-Package: $PKG_NAME
+replacements = (
+    ("/etc/" + package_name + ".conf", "/etc/drcom.conf"),
+    ("/tmp/" + package_name + ".log", "/tmp/drcom.log"),
+    ("/tmp/" + package_name + "-port-state", "/tmp/drcom-port-state"),
+)
+
+for path in (init_path, controller_path):
+    text = path.read_text(encoding="utf-8").replace("drcom", package_name)
+    for old, new in replacements:
+        text = text.replace(old, new)
+    path.write_text(text, encoding="utf-8", newline="\n")
+PY
+
+python3 - "$STAGE_DIR/usr/lib/lua/luci/view/$OUTPUT_PKG_NAME/form.htm" "$OUTPUT_PKG_NAME" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+package_name = sys.argv[2]
+text = path.read_text(encoding="utf-8").replace("jludrcom.language", f"{package_name}.language")
+path.write_text(text, encoding="utf-8", newline="\n")
+PY
+
+chmod 0755 "$STAGE_DIR/usr/bin/$OUTPUT_PKG_NAME" "$STAGE_DIR/etc/init.d/$OUTPUT_PKG_NAME"
+
+INSTALLED_SIZE="$(( $(du -sk "$STAGE_DIR" | awk '{print $1}') * 1024 ))"
+
+cat > "$CONTROL_DIR/control" <<EOF
+Package: $OUTPUT_PKG_NAME
 Version: $PKG_FULL_VERSION
-Depends: luci-base
+Depends: libc, luci-base
+Source: feeds/base/$OUTPUT_PKG_NAME
+SourceName: $OUTPUT_PKG_NAME
+License: AGPL-3.0-or-later
 Section: net
-Category: Network
-Title: OpenWrt DrCOM client service with LuCI dashboard
-Maintainer: ymylive
+SourceDateEpoch: $SOURCE_DATE_EPOCH
+Maintainer: $OUTPUT_PKG_NAME maintainers
 Architecture: $SDK_PKGARCH
 Installed-Size: $INSTALLED_SIZE
-Description: General-purpose DrCOM client service for OpenWrt routers with LuCI dashboard, live logs and automatic UDP 61440 port recovery.
+Description: DrCOM client (dogcom C implementation) with the enhanced LuCI dashboard and compatibility package layout.
 EOF
 
-cat > "$PKG_BUILD_DIR/CONTROL/conffiles" <<'EOF'
+cat > "$CONTROL_DIR/conffiles" <<'EOF'
 /etc/drcom.conf
 EOF
 
-cat > "$PKG_BUILD_DIR/CONTROL/postinst" <<'EOF'
+cat > "$CONTROL_DIR/postinst" <<'EOF'
 #!/bin/sh
-[ -n "$IPKG_INSTROOT" ] && exit 0
-if [ -x /etc/init.d/uhttpd ]; then
-  /etc/init.d/uhttpd reload >/dev/null 2>&1 || true
-fi
-if [ -x /etc/init.d/drcom ] && [ -x /usr/bin/drcom ]; then
-  /etc/init.d/drcom enable >/dev/null 2>&1 || true
-fi
+[ "${IPKG_NO_SCRIPT}" = "1" ] && exit 0
+[ -s ${IPKG_INSTROOT}/lib/functions.sh ] || exit 0
+. ${IPKG_INSTROOT}/lib/functions.sh
+default_postinst $0 $@
+EOF
+
+cat > "$CONTROL_DIR/postinst-pkg" <<EOF
+#!/bin/sh
+[ -n "\$IPKG_INSTROOT" ] || {
+  /etc/init.d/$OUTPUT_PKG_NAME enable >/dev/null 2>&1 || true
+  /etc/init.d/$OUTPUT_PKG_NAME restart >/dev/null 2>&1 || true
+  [ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd reload >/dev/null 2>&1 || true
+}
 exit 0
 EOF
 
-cat > "$PKG_BUILD_DIR/CONTROL/prerm" <<'EOF'
+cat > "$CONTROL_DIR/prerm" <<'EOF'
 #!/bin/sh
-[ -n "$IPKG_INSTROOT" ] && exit 0
-if [ -x /etc/init.d/drcom ]; then
-  /etc/init.d/drcom stop >/dev/null 2>&1 || true
-fi
+[ -s ${IPKG_INSTROOT}/lib/functions.sh ] || exit 0
+. ${IPKG_INSTROOT}/lib/functions.sh
+default_prerm $0 $@
+EOF
+
+cat > "$CONTROL_DIR/prerm-pkg" <<EOF
+#!/bin/sh
+[ -n "\$IPKG_INSTROOT" ] || {
+  /etc/init.d/$OUTPUT_PKG_NAME stop >/dev/null 2>&1 || true
+}
 exit 0
 EOF
 
-chmod 0755 "$PKG_BUILD_DIR/CONTROL/postinst" "$PKG_BUILD_DIR/CONTROL/prerm"
+chmod 0755 \
+  "$CONTROL_DIR/postinst" \
+  "$CONTROL_DIR/postinst-pkg" \
+  "$CONTROL_DIR/prerm" \
+  "$CONTROL_DIR/prerm-pkg"
 
-"$SDK_ROOT/scripts/ipkg-build" "$PKG_BUILD_DIR" "$OUTPUT_DIR" >/dev/null
+OUTPUT_IPK="$OUTPUT_DIR/${OUTPUT_PKG_NAME}_${PKG_FULL_VERSION}_${SDK_PKGARCH}.ipk"
+rm -f "$OUTPUT_IPK" "${OUTPUT_IPK}.sha256"
+python3 "$SCRIPT_DIR/build-legacy-ipk.py" \
+  --stage-dir "$STAGE_DIR" \
+  --control-dir "$CONTROL_DIR" \
+  --output "$OUTPUT_IPK" \
+  --source-date-epoch "$SOURCE_DATE_EPOCH" >/dev/null
 
-OUTPUT_IPK="$OUTPUT_DIR/${PKG_NAME}_${PKG_FULL_VERSION}_${SDK_PKGARCH}.ipk"
-if [[ ! -f "$OUTPUT_IPK" ]]; then
-  echo "Expected output package not found: $OUTPUT_IPK" >&2
-  exit 1
-fi
-
-sha256sum "$OUTPUT_IPK" > "${OUTPUT_IPK}.sha256"
 echo "$OUTPUT_IPK"

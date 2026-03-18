@@ -4,7 +4,7 @@
 
 这个仓库的目标不是只存一个现成 `ipk`，而是提供一套可以持续维护、自动构建、直接发布的 OpenWrt 包源码：
 
-- `drcom` 二进制
+- `drcom_openwrt` 兼容二进制
 - LuCI 控制面板
 - 默认配置模板
 - `procd` 服务脚本
@@ -25,7 +25,8 @@
 - `drcom/src/`：内置 `dogcom` C 源码
 - `drcom/files/`：安装到路由器上的配置、服务脚本、LuCI 页面
 - `scripts/generate-openwrt-sdk-matrix.py`：从 OpenWrt 官方 release 自动发现 SDK，并按 `pkgarch` 去重
-- `scripts/build-openwrt-sdk-ipk.sh`：使用官方 SDK toolchain + `scripts/ipkg-build` 手工打包单个 `ipk`
+- `scripts/build-openwrt-sdk-ipk.sh`：使用官方 SDK toolchain 交叉编译，并按已验证的 legacy `tar.gz` 结构打包单个 `ipk`
+- `scripts/build-legacy-ipk.py`：构造 legacy OpenWrt `ipk` 外层 `./debian-binary` / `./data.tar.gz` / `./control.tar.gz`
 - `.github/workflows/build-ipk.yml`：GitHub Actions 自动构建与发布流程
 
 ## 安装
@@ -35,15 +36,21 @@
 在 GitHub Release 中下载对应架构的 `ipk`，上传到 OpenWrt / iStoreOS：
 
 ```sh
-opkg install /tmp/drcom_*.ipk --force-reinstall
+opkg install /tmp/drcom_openwrt_*.ipk --force-reinstall
 chmod 600 /etc/drcom.conf
-/etc/init.d/drcom enable
-/etc/init.d/drcom restart
+/etc/init.d/drcom_openwrt enable
+/etc/init.d/drcom_openwrt restart
 ```
 
 安装后进入：
 
 `LuCI -> 服务 -> DrCOM`
+
+如果路由器上之前安装过旧包名 `jludrcom`，建议先执行：
+
+```sh
+opkg remove jludrcom
+```
 
 ### 按校园网要求预先配置 WAN
 
@@ -162,10 +169,10 @@ keepalive1_mod=True
 ## 前台调试
 
 ```sh
-/etc/init.d/drcom stop
-killall drcom 2>/dev/null
+/etc/init.d/drcom_openwrt stop
+killall drcom_openwrt 2>/dev/null
 ss -lunp | grep ':61440'
-/usr/bin/drcom -m dhcp -c /etc/drcom.conf -e -l /tmp/drcom.log
+/usr/bin/drcom_openwrt -m dhcp -c /etc/drcom.conf -e -l /tmp/drcom.log
 ```
 
 查看日志：
@@ -187,7 +194,7 @@ logread | grep -E 'drcom|dogcom|EAP'
 
 1. `verify`：校验 Lua、内联 JS、配置解析器测试
 2. `plan-matrix`：从 OpenWrt 官方 release 页面自动发现 target / subtarget，并从 `packages/Packages.gz` 提取 `Architecture`，按 `pkgarch` 去重
-3. `build`：对每个唯一 `pkgarch` 使用官方 SDK toolchain 交叉编译，并调用 SDK 自带 `scripts/ipkg-build`
+3. `build`：对每个唯一 `pkgarch` 使用官方 SDK toolchain 交叉编译，并按已验证的 legacy `tar.gz` 兼容格式打包
 4. `release`：在标签构建时直接发布多个 `.ipk` 和 `.sha256`
 
 ### 发布产物规则
@@ -199,8 +206,8 @@ logread | grep -E 'drcom|dogcom|EAP'
 
 产物命名格式：
 
-- `drcom_<version>-<release>_<pkgarch>.ipk`
-- `drcom_<version>-<release>_<pkgarch>.ipk.sha256`
+- `drcom_openwrt_<version>-<release>_<pkgarch>.ipk`
+- `drcom_openwrt_<version>-<release>_<pkgarch>.ipk.sha256`
 
 ## 支持架构
 

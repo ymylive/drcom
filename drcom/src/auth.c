@@ -21,29 +21,38 @@ typedef int socklen_t;
 #include "keepalive.h"
 #include "libs/md4.h"
 #include "libs/md5.h"
+#include "retry_policy.h"
 #include "libs/sha1.h"
 
 #define BIND_PORT 61440
 #define DEST_PORT 61440
-#define SHORT_GENERIC_RETRY_DELAY_SECONDS 3
-#define DEFAULT_LOGIN_RETRY_DELAY_SECONDS 60
 #define INITIAL_BOOT_LOGIN_DELAY_SECONDS 300
 
-static int login_retry_delay_seconds = DEFAULT_LOGIN_RETRY_DELAY_SECONDS;
+static int login_retry_delay_seconds = DRCOM_DEFAULT_LOGIN_RETRY_DELAY_SECONDS;
 
 static void reset_login_retry_delay(void) {
-    login_retry_delay_seconds = DEFAULT_LOGIN_RETRY_DELAY_SECONDS;
+    login_retry_delay_seconds = DRCOM_DEFAULT_LOGIN_RETRY_DELAY_SECONDS;
 }
 
 static int current_login_retry_delay(void) {
-    return login_retry_delay_seconds > 0 ? login_retry_delay_seconds : DEFAULT_LOGIN_RETRY_DELAY_SECONDS;
+    return drcom_normalize_login_retry_delay(login_retry_delay_seconds);
 }
 
 static void set_login_retry_delay(int seconds) {
-    if (seconds <= 0) {
-        seconds = DEFAULT_LOGIN_RETRY_DELAY_SECONDS;
+    login_retry_delay_seconds = drcom_normalize_login_retry_delay(seconds);
+}
+
+static void sleep_before_retry(int seconds) {
+    int retry_delay_seconds = drcom_normalize_login_retry_delay(seconds);
+    char retry_msg[64];
+
+    printf("Retrying in %d seconds...\n", retry_delay_seconds);
+    if (logging_flag) {
+        snprintf(retry_msg, sizeof(retry_msg), "Retrying in %d seconds...", retry_delay_seconds);
+        logging(retry_msg, NULL, 0);
     }
-    login_retry_delay_seconds = seconds;
+
+    sleep(retry_delay_seconds);
 }
 
 static int read_system_uptime_seconds(void) {
@@ -408,6 +417,7 @@ int dhcp_login(int sockfd, struct sockaddr_in addr, unsigned char seed[], unsign
         char err_msg[256];
         if (recv_packet[0] == 0x05) {
             int retry_after_seconds = extract_retry_after_seconds(recv_packet, recv_length);
+            set_login_retry_delay(drcom_retry_delay_for_login_reply(recv_packet[4], recv_length, retry_after_seconds));
             switch (recv_packet[4]) {
                 case CHECK_MAC:
                     strcpy(err_msg, "[Tips] Someone is using this account with wired.");
@@ -418,10 +428,8 @@ int dhcp_login(int sockfd, struct sockaddr_in addr, unsigned char seed[], unsign
                 case WRONG_PASS:
                     if (recv_length <= 5) {
                         strcpy(err_msg, "[Tips] Server returned a short generic credential rejection. This is usually a temporary template-side rejection rather than a confirmed password error. Local retry is 3 seconds so the client can probe the alternate login template quickly.");
-                        set_login_retry_delay(SHORT_GENERIC_RETRY_DELAY_SECONDS);
                     } else {
                         strcpy(err_msg, "[Tips] Account and password not match.");
-                        set_login_retry_delay(DEFAULT_LOGIN_RETRY_DELAY_SECONDS);
                     }
                     break;
                 case NOT_ENOUGH:
@@ -441,11 +449,9 @@ int dhcp_login(int sockfd, struct sockaddr_in addr, unsigned char seed[], unsign
                     break;
                 case UPDATE_CLIENT:
                     if (retry_after_seconds > 0) {
-                        snprintf(err_msg, sizeof(err_msg), "[Tips] Server forced this account offline and reported a cooldown of %d seconds. Local retry remains fixed at 60 seconds.", retry_after_seconds);
-                        set_login_retry_delay(DEFAULT_LOGIN_RETRY_DELAY_SECONDS);
+                        snprintf(err_msg, sizeof(err_msg), "[Tips] Server forced this account offline and reported a cooldown of %d seconds. Local retry follows the reported cooldown.", retry_after_seconds);
                     } else {
                         strcpy(err_msg, "[Tips] The server rejected the current client signature/version. Local retry remains fixed at 60 seconds.");
-                        set_login_retry_delay(DEFAULT_LOGIN_RETRY_DELAY_SECONDS);
                     }
                     break;
                 case NOT_ON_THIS_IP_MAC:
@@ -456,7 +462,6 @@ int dhcp_login(int sockfd, struct sockaddr_in addr, unsigned char seed[], unsign
                     break;
                 default:
                     strcpy(err_msg, "[Tips] Unknown error number.");
-                    set_login_retry_delay(DEFAULT_LOGIN_RETRY_DELAY_SECONDS);
                     break;
             }
             printf("%s\n", err_msg);
@@ -734,12 +739,9 @@ int dogcom(int try_times) {
             unsigned char seed[4];
             unsigned char auth_information[16];
             if (dhcp_challenge(sockfd, dest_addr, seed)) {
-                printf("Retrying...\n");
-                if (logging_flag) {
-                    logging("Retrying...", NULL, 0);
-                }
-                sleep(3);
+                sleep_before_retry(current_login_retry_delay());
             } else {
+                int reconnect_after_keepalive_failure = 0;
                 usleep(200000);  // 0.2 sec
                 if (login_failed_attempts > 2) {
                     try_JLUversion = login_failed_attempts % 2;
@@ -764,6 +766,7 @@ int dogcom(int try_times) {
                             if (keepalive_2(sockfd, dest_addr, &keepalive_counter, &first, 0)) {
                                 continue;
                             }
+                            keepalive_try_counter = drcom_next_keepalive_failure_count(keepalive_try_counter, 1);
                             if (verbose_flag) {
                                 printf("Keepalive in loop.\n");
                             }
@@ -772,24 +775,25 @@ int dogcom(int try_times) {
                             }
                             sleep(20);
                         } else {
-                            if (keepalive_try_counter > 5) {
+                            keepalive_try_counter = drcom_next_keepalive_failure_count(keepalive_try_counter, 0);
+                            if (drcom_should_reconnect_after_keepalive_failure(keepalive_try_counter)) {
+                                set_login_retry_delay(DRCOM_DEFAULT_LOGIN_RETRY_DELAY_SECONDS);
+                                printf("[Tips] Keepalive failed repeatedly. Backing off before re-login.\n");
+                                if (logging_flag) {
+                                    logging("[Tips] Keepalive failed repeatedly. Backing off before re-login.", NULL, 0);
+                                }
+                                reconnect_after_keepalive_failure = 1;
                                 break;
                             }
-                            keepalive_try_counter++;
                             continue;
                         }
                     }
-                } else {
-                    int retry_delay_seconds;
-                    login_failed_attempts += 1;
-                    retry_delay_seconds = current_login_retry_delay();
-                    printf("Retrying in %d seconds...\n", retry_delay_seconds);
-                    if (logging_flag) {
-                        char retry_msg[64];
-                        snprintf(retry_msg, sizeof(retry_msg), "Retrying in %d seconds...", retry_delay_seconds);
-                        logging(retry_msg, NULL, 0);
+                    if (reconnect_after_keepalive_failure) {
+                        sleep_before_retry(current_login_retry_delay());
                     }
-                    sleep(retry_delay_seconds);
+                } else {
+                    login_failed_attempts += 1;
+                    sleep_before_retry(current_login_retry_delay());
                 };
             }
         }

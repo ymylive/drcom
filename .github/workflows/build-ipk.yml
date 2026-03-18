@@ -29,7 +29,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PACKAGE_NAME: drcom
+  PACKAGE_NAME: drcom_openwrt
   OPENWRT_RELEASE: 24.10.5
 
 jobs:
@@ -44,6 +44,7 @@ jobs:
 
       - name: Validate helper scripts
         run: |
+          python3 -m py_compile scripts/build-legacy-ipk.py
           python3 -m py_compile scripts/generate-openwrt-sdk-matrix.py
           bash -n scripts/build-openwrt-sdk-ipk.sh
 
@@ -134,7 +135,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: dist
-          pattern: drcom-*
+          pattern: ${{ env.PACKAGE_NAME }}-*
           merge-multiple: true
 
       - name: Publish release assets
@@ -148,7 +149,7 @@ jobs:
 
             - OpenWrt release: ${{ env.OPENWRT_RELEASE }}
             - Package: ${{ env.PACKAGE_NAME }}
-            - Build route: official SDK toolchain + scripts/ipkg-build
+            - Build route: official SDK toolchain + legacy tar.gz ipk packer
             - Assets: one `.ipk` and one `.sha256` per pkgarch
           name: ${{ github.ref_name }}
           removeArtifacts: true

@@ -38,13 +38,15 @@ SOURCES := $(wildcard *.c) $(wildcard libs/*.c)
 OBJECTS := $(patsubst %.c,%.o,$(SOURCES))
 TEST_PARSER_BIN := tests/parser_smoke$(EXEEXT)
 TEST_PARSER_SOURCES := tests/parser_smoke.c configparse.c
+TEST_RETRY_POLICY_BIN := tests/retry_policy_smoke$(EXEEXT)
+TEST_RETRY_POLICY_SOURCES := tests/retry_policy_smoke.c retry_policy.c
 
 ifeq ($(OS),Windows_NT)
 CLEAN_OBJECTS := $(subst /,\,$(OBJECTS))
-CLEAN_TARGETS := $(subst /,\,$(TARGET)) $(subst /,\,$(TEST_PARSER_BIN))
+CLEAN_TARGETS := $(subst /,\,$(TARGET)) $(subst /,\,$(TEST_PARSER_BIN)) $(subst /,\,$(TEST_RETRY_POLICY_BIN))
 else
 CLEAN_OBJECTS := $(OBJECTS)
-CLEAN_TARGETS := $(TARGET) $(TEST_PARSER_BIN)
+CLEAN_TARGETS := $(TARGET) $(TEST_PARSER_BIN) $(TEST_RETRY_POLICY_BIN)
 endif
 
 all: $(TARGET)
@@ -58,10 +60,16 @@ $(TARGET): $(OBJECTS)
 $(TEST_PARSER_BIN): $(TEST_PARSER_SOURCES) configparse.h debug.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(TEST_PARSER_SOURCES) -o $(TEST_PARSER_BIN)
 
+$(TEST_RETRY_POLICY_BIN): $(TEST_RETRY_POLICY_SOURCES) auth.h retry_policy.h
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(TEST_RETRY_POLICY_SOURCES) -o $(TEST_RETRY_POLICY_BIN)
+
 test-parser: $(TEST_PARSER_BIN)
 	./$(TEST_PARSER_BIN)
+
+test-retry-policy: $(TEST_RETRY_POLICY_BIN)
+	./$(TEST_RETRY_POLICY_BIN)
 
 clean:
 	-$(RMFILES) $(CLEAN_OBJECTS) $(CLEAN_TARGETS) $(CLEAN_REDIRECT)
 
-.PHONY: all clean test-parser
+.PHONY: all clean test-parser test-retry-policy
