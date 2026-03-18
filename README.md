@@ -21,7 +21,7 @@
 
 ## 目录结构
 
-- `drcom/`：OpenWrt 包目录
+- `drcom/`：OpenWrt 包源码目录。为了兼容当前仓库结构，源码目录仍保留 `drcom/` 这个名字；GitHub Release 产物与路由器安装后的包名为 `drcom_openwrt`
 - `drcom/src/`：内置 `dogcom` C 源码
 - `drcom/files/`：安装到路由器上的配置、服务脚本、LuCI 页面
 - `scripts/generate-openwrt-sdk-matrix.py`：从 OpenWrt 官方 release 自动发现 SDK，并按 `pkgarch` 去重
@@ -52,6 +52,8 @@ chmod 600 /etc/drcom.conf
 opkg remove jludrcom
 ```
 
+如果之前安装过旧的 `drcom` 包，也建议先移除再装新的 `drcom_openwrt` 包，避免同一配置文件和服务路径的归属混在一起。
+
 ### 按校园网要求预先配置 WAN
 
 部分校园网接入场景要求先在 OpenWrt 接口页面里把 `WAN` 配置为**静态地址**，再启动 `drcom` 认证。
@@ -78,11 +80,18 @@ LuCI 路径：
 ip route get 10.100.61.3
 ```
 
-4. 再启动 `drcom`
+4. 再启动 `drcom_openwrt`
 
 如果这里仍然提示 `Network unreachable`、`到认证服务器没有路由` 或 `Challenge` 一直重试，优先排查的不是账号密码，而是 `WAN` 的静态地址、网关、DNS 和 MAC 是否与网络侧登记信息一致。
 
 ### 作为 OpenWrt feed 使用
+
+这里有一个命名差异需要说明：
+
+- GitHub Release 直接安装到路由器上的包名是 `drcom_openwrt`
+- 仓库里的 OpenWrt 源码目录和 feed 目标目前仍然叫 `drcom`
+
+因此，下面这组 feed / SDK 源码树命令仍然使用 `drcom`，这是源码侧名字，不是路由器上最终安装后的包名。
 
 ```sh
 echo 'src-git ymylive_drcom https://github.com/ymylive/drcom.git' >> feeds.conf.default
@@ -91,11 +100,11 @@ echo 'src-git ymylive_drcom https://github.com/ymylive/drcom.git' >> feeds.conf.
 make menuconfig
 ```
 
-然后在 `Network` 分类里选择 `drcom`。
+然后在 `Network` 分类里选择源码包 `drcom` 进行编译；最终 Release 产物名仍会是 `drcom_openwrt`。
 
 ### 复制包目录到 OpenWrt / SDK
 
-如果你在本地 OpenWrt 源码树里直接测试，也可以把 `drcom/` 复制到 `package/` 下：
+如果你在本地 OpenWrt 源码树里直接测试，也可以把源码目录 `drcom/` 复制到 `package/` 下：
 
 ```sh
 make package/drcom/compile V=s
@@ -184,7 +193,7 @@ tail -f /tmp/drcom.log
 查看运行状态：
 
 ```sh
-ps w | grep [d]rcom
+ps w | grep [d]rcom_openwrt
 logread | grep -E 'drcom|dogcom|EAP'
 ```
 
@@ -232,6 +241,11 @@ bash scripts/build-openwrt-sdk-ipk.sh \
   --sdk-root /path/to/openwrt-sdk-24.10.5-rockchip-armv8_gcc-13.3.0_musl.Linux-x86_64 \
   --output-dir ./dist/aarch64_generic
 ```
+
+这个脚本当前输出的文件名为：
+
+- `drcom_openwrt_<version>-<release>_<pkgarch>.ipk`
+- `drcom_openwrt_<version>-<release>_<pkgarch>.ipk.sha256`
 
 ## 许可证
 
